@@ -1,7 +1,9 @@
-// Preload for the Monkeytype window (sandboxed, observe-only): captures every keystroke of a
-// test and sends the finished test to the main process. It never writes to Monkeytype's page.
+// Preload for the Monkeytype window (sandboxed): captures every keystroke of a test and sends the
+// finished test to the main process. It only reads the page, except when the user asks for a
+// practice test: then inject.ts loads the words through Monkeytype's own custom text dialog.
 import { ipcRenderer } from 'electron';
 import type { TestResult } from '../shared/types';
+import { injectPractice } from './inject';
 import { Recorder } from './recorder';
 import { LABEL, SEL } from './selectors';
 
@@ -84,3 +86,9 @@ function onMutations(records: MutationRecord[]): void {
 
 window.addEventListener('keydown', onKeydown, { capture: true, passive: true });
 new MutationObserver(onMutations).observe(document, { childList: true, subtree: true });
+
+ipcRenderer.on('wwc:inject-practice', async (_event, payload: unknown) => {
+  const words = (payload as { words?: unknown } | null)?.words;
+  const valid = Array.isArray(words) && words.length > 0 && words.every((w) => typeof w === 'string' && w);
+  ipcRenderer.send('wwc:inject-done', valid ? await injectPractice(words) : { ok: false, error: 'No practice words' });
+});

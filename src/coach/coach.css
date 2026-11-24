@@ -30,12 +30,12 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--black); color: var(--text); }
 body { font: 400 14px/1.45 var(--ui); -webkit-font-smoothing: antialiased; }
-main { padding: 24px 24px 20px; }
+main { padding: 24px 24px 16px; }
 [hidden] { display: none !important; }
 
 :focus-visible { outline: 2px solid #f5f5f7; outline-offset: 2px; }
 
-header { margin-bottom: 42px; }
+header { margin-bottom: 24px; }
 h1 {
   margin: 0;
   font: 650 26px/1.1 var(--display);
@@ -46,7 +46,7 @@ h2 { margin: 0; font: 600 15px/1.2 var(--display); font-stretch: 114%; }
 .quiet { margin: 6px 0 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 /* Keyboard heatmap */
-.keyboard { position: relative; margin-bottom: 26px; }
+.keyboard { position: relative; margin-bottom: 22px; }
 .keys { display: grid; gap: 5px; container-type: inline-size; }
 /* Ten keys fill the width; the lower rows are staggered like a real keyboard. */
 .row { --k: calc((100cqw - 45px) / 10); display: flex; gap: 5px; }
@@ -141,7 +141,7 @@ th {
   font-weight: 400;
   text-align: right;
 }
-td { padding: 7px 0; border-bottom: 1px solid var(--line); text-align: right; color: var(--muted); }
+td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: right; color: var(--muted); }
 th:first-child, td:first-child { text-align: left; }
 td.item { color: var(--text); font-size: 15px; font-weight: 500; }
 .item > span { display: flex; align-items: center; gap: 10px; }
@@ -152,7 +152,7 @@ td.speed { color: var(--text); }
 .spots:has(.empty:not([hidden])) table { display: none; }
 .spots:has(.empty:not([hidden])) .segmented { display: none; }
 
-footer { margin-top: 20px; }
+footer { margin-top: 16px; }
 .primary {
   width: 100%;
   padding: 13px 18px;
@@ -169,6 +169,17 @@ footer { margin-top: 20px; }
 .primary:disabled { background: var(--raised); color: var(--faint); cursor: default; }
 footer .quiet { text-align: center; }
 footer .quiet:empty { display: none; }
+footer #practice-status { margin-top: 10px; color: var(--text); }
+.hint { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; text-align: center; }
+kbd {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 2px 6px;
+  border: 1px solid var(--outline);
+  border-radius: 6px;
+  color: var(--text);
+  font: 500 11.5px/1.2 var(--ui);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

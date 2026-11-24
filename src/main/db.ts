@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import type { CapturedTest, Keystroke, StoredTest, TestSource } from '../shared/types';
+import type { CapturedTest, Keystroke, PracticePlan, StoredTest, TestSource } from '../shared/types';
 
 export type Db = Database.Database;
 
@@ -109,4 +109,24 @@ export function getTests(db: Db, opts: { source?: TestSource; limit?: number } =
       }),
     ),
   }));
+}
+
+/** Stores a generated practice plan; returns the new session id. */
+export function insertPracticeSession(db: Db, plan: PracticePlan): number {
+  const focus = { keys: plan.focusKeys, bigrams: plan.focusBigrams, words: plan.focusWords };
+  const { lastInsertRowid } = db
+    .prepare('INSERT INTO practice_sessions (created_at, words, focus) VALUES (?, ?, ?)')
+    .run(Date.now(), JSON.stringify(plan.words), JSON.stringify(focus));
+  return Number(lastInsertRowid);
+}
+
+const RECENT_SESSIONS = 50;
+
+/** The newest of the last ~50 practice sessions whose words are exactly `words`, or null. */
+export function findPracticeSession(db: Db, words: string[]): number | null {
+  const json = JSON.stringify(words);
+  const rows = db
+    .prepare('SELECT id, words FROM practice_sessions ORDER BY id DESC LIMIT ?')
+    .all(RECENT_SESSIONS) as { id: number; words: string }[];
+  return rows.find((r) => r.words === json)?.id ?? null;
 }

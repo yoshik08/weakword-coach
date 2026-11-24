@@ -26,6 +26,17 @@ export const SEL = {
   testConfig: '[data-ui-element="testConfig"]',
   /** Restart button below the words (the result screen's "next test" shares the attribute). */
   restartButton: '[data-ui-element="restartTestButton"]',
+  /** The typing area (words + live stats); hidden while the result screen shows. */
+  typingTest: '#typingTest',
+  /** The result screen's "next test" button. */
+  resultRestartButton: '#result [data-ui-element="restartTestButton"]',
+  /** Buttons inside the test config bar. */
+  configButton: '[data-ui-element="testConfig"] button',
+  /** Custom text dialog: open state, its text box, its mode buttons and its "ok" button. */
+  customTextDialog: 'dialog#CustomTextModal[open]',
+  customTextInput: 'dialog#CustomTextModal textarea#text',
+  customTextButton: 'dialog#CustomTextModal button[type="button"]',
+  customTextSubmit: 'dialog#CustomTextModal button[type="submit"]',
   /** Cookie consent dialog. */
   cookiesDialog: 'dialog#CookiesModal[open]',
   /** Any open modal dialog (command line, custom text, cookies ...). */
@@ -42,4 +53,8 @@ export const LABEL = {
   consistency: 'consistency',
   /** testConfig mode button. */
   wordsMode: 'words',
+  /** testConfig button (in custom mode) that opens the custom text dialog. */
+  changeCustomText: 'change',
+  /** Custom text dialog mode: words once each, in order. */
+  simpleMode: 'simple',
 } as const;

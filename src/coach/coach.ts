@@ -47,6 +47,7 @@ const stateOf = (confidence: number) => (confidence < 0.8 ? 'weak' : confidence 
 const pct = (rate: number) => `${(rate * 100).toFixed(1)}%`;
 
 let data: Analysis | undefined;
+let practicing = false;
 let kind: Kind = 'keys';
 const keyEls = new Map<string, HTMLButtonElement>();
 
@@ -181,6 +182,8 @@ function render(all: { standard: Analysis; practice: Analysis }): void {
   renderTable(a);
   $('empty').hidden = n > 0;
   const sessions = all.practice.testCount;
+  // Practising needs something to practise: at least one standard test.
+  if (!practicing) ($('practice') as HTMLButtonElement).disabled = n === 0;
   $('practice-note').textContent = sessions > 0 ? `Practice: ${sessions} ${sessions === 1 ? 'session' : 'sessions'}` : '';
 }
 
@@ -206,9 +209,12 @@ function init(): void {
     tabs.querySelector<HTMLElement>(`[data-kind="${order[i]}"]`)!.focus();
   });
 
-  $('practice').addEventListener('click', async () => {
-    const result = await window.coach.startPractice();
-    if (!result.ok) $('practice-note').textContent = result.error ?? 'Could not start practice.';
+  $('practice').addEventListener('click', () => void window.coach.startPractice());
+  window.coach.onPracticeStatus(({ state, error }) => {
+    practicing = state === 'running';
+    ($('practice') as HTMLButtonElement).disabled = practicing || (data?.testCount ?? 0) === 0;
+    $('practice-status').textContent =
+      state === 'running' ? 'Preparing…' : state === 'done' ? 'Practice loaded in Monkeytype' : (error ?? 'Could not start practice.');
   });
 
   window.coach.onDataChanged(() => void refresh());

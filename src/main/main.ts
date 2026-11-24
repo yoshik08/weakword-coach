@@ -1,9 +1,12 @@
 import { app, BrowserWindow, ipcMain, session, shell, type BrowserWindowConstructorOptions } from 'electron';
+import { randomInt } from 'node:crypto';
 import path from 'node:path';
 import { analyze, deriveTargetWpm } from '../shared/analysis';
+import { generatePractice } from '../shared/generator';
 import type { CapturedTest, CoachData, TestSource } from '../shared/types';
-import { getTests, insertTest, openDb, type Db } from './db';
+import { findPracticeSession, getTests, insertPracticeSession, insertTest, openDb, type Db } from './db';
 import { isCapturedTest } from './validate';
+import { loadWordLists } from './wordlists';
 
 let db: Db | undefined;
 
@@ -97,32 +100,119 @@ function createCoachWindow(anchor: BrowserWindow): BrowserWindow {
   return win;
 }
 
-// Phase 4 decides here whether a finished test was a practice session (and which one).
-function classifyTest(_test: CapturedTest): { source: TestSource; practiceId: number | null } {
-  return { source: 'standard', practiceId: null };
+const INJECT_TIMEOUT_MS = 20_000;
+const PAGE_LOAD_TIMEOUT_MS = 20_000;
+const MIN_PRACTICE_WORDS = 10;
+
+type PracticeResult = { ok: boolean; error?: string };
+
+/** A custom test whose words are exactly a stored practice session is that practice session. */
+function classifyTest(test: CapturedTest, database: Db): { source: TestSource; practiceId: number | null } {
+  const practiceId = test.mode.startsWith('custom') ? findPracticeSession(database, test.words) : null;
+  return practiceId === null ? { source: 'standard', practiceId: null } : { source: 'practice', practiceId };
 }
 
 app.whenReady().then(() => {
   if (!gotLock) return;
-  db = openDb(path.join(app.getPath('userData'), 'weakword.db'));
+  const database = openDb(path.join(app.getPath('userData'), 'weakword.db'));
+  db = database;
   const monkeytype = createMonkeytypeWindow();
   const coach = createCoachWindow(monkeytype);
+  const toCoach = (channel: string, ...args: unknown[]) => {
+    if (!coach.isDestroyed()) coach.webContents.send(channel, ...args);
+  };
+
+  /** Asks the Monkeytype preload to load the words through the page's own UI. */
+  function injectWords(words: string[]): Promise<PracticeResult> {
+    return new Promise((resolve) => {
+      const finish = (result: PracticeResult) => {
+        clearTimeout(timer);
+        ipcMain.removeListener('wwc:inject-done', onDone);
+        resolve(result);
+      };
+      const onDone = (event: Electron.IpcMainEvent, result: PracticeResult) => {
+        if (event.sender === monkeytype.webContents) finish(result);
+      };
+      const timer = setTimeout(() => finish({ ok: false, error: 'Monkeytype did not respond in time' }), INJECT_TIMEOUT_MS);
+      ipcMain.on('wwc:inject-done', onDone);
+      monkeytype.webContents.send('wwc:inject-practice', { words });
+    });
+  }
+
+  /** Reloads like F5; Monkeytype keeps a custom text but shows only as many words as its previous wordset had. */
+  function reloadMonkeytype(): Promise<void> {
+    return new Promise((resolve) => {
+      const wc = monkeytype.webContents;
+      const done = () => {
+        clearTimeout(timer);
+        wc.removeListener('did-finish-load', done);
+        resolve();
+      };
+      const timer = setTimeout(done, PAGE_LOAD_TIMEOUT_MS);
+      wc.on('did-finish-load', done);
+      wc.reload();
+    });
+  }
+
+  let practicing = false;
+  async function startPractice(): Promise<PracticeResult> {
+    if (practicing) return { ok: true };
+    practicing = true;
+    toCoach('wwc:practice-status', { state: 'running' });
+    let result: PracticeResult;
+    try {
+      const standard = getTests(database, { source: 'standard', limit: 50 });
+      const analysis = analyze(standard, 'standard', { targetWpm: deriveTargetWpm(standard) });
+      const lists = await loadWordLists(path.join(app.getPath('userData'), 'wordlists'));
+      const plan = generatePractice({ analysis, wordList: lists.list, commonWords: lists.common, seed: randomInt(2 ** 31) });
+      if (plan.words.length < MIN_PRACTICE_WORDS) throw new Error('Could not build a practice list from the word lists.');
+      result = await injectWords(plan.words);
+      if (result.ok) {
+        insertPracticeSession(database, plan); // only a loaded session can be recognised later
+        await reloadMonkeytype();
+        if (!TEST) monkeytype.focus();
+        toCoach('wwc:data-changed');
+      }
+    } catch (e) {
+      result = { ok: false, error: (e as Error).message };
+    } finally {
+      practicing = false;
+    }
+    toCoach('wwc:practice-status', result.ok ? { state: 'done' } : { state: 'error', error: result.error });
+    return result;
+  }
+
+  ipcMain.handle('wwc:start-practice', (event): Promise<PracticeResult> => {
+    if (event.sender !== coach.webContents) throw new Error('not available');
+    return startPractice();
+  });
+
+  // Ctrl+Shift+P from either window. This shadows Monkeytype's own Ctrl+Shift+P (command line)
+  // inside the app; Esc still opens it.
+  for (const wc of [monkeytype.webContents, coach.webContents]) {
+    wc.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown' || !input.control || !input.shift || input.alt || input.meta) return;
+      if (input.key.toLowerCase() !== 'p') return;
+      event.preventDefault();
+      void startPractice();
+    });
+  }
 
   ipcMain.handle('wwc:get-coach-data', (event): CoachData => {
-    if (event.sender !== coach.webContents || !db) throw new Error('not available');
-    const standard = getTests(db, { source: 'standard', limit: 50 });
+    if (event.sender !== coach.webContents) throw new Error('not available');
+    const standard = getTests(database, { source: 'standard', limit: 50 });
     const targetWpm = deriveTargetWpm(standard);
     return {
       standard: analyze(standard, 'standard', { targetWpm }),
-      practice: analyze(getTests(db, { source: 'practice', limit: 50 }), 'practice', { targetWpm }),
+      practice: analyze(getTests(database, { source: 'practice', limit: 50 }), 'practice', { targetWpm }),
     };
   });
 
   ipcMain.on('wwc:test-finished', (event, payload: unknown) => {
-    if (event.sender !== monkeytype.webContents || !db || !isCapturedTest(payload)) return;
-    const { source, practiceId } = classifyTest(payload);
-    insertTest(db, payload, source, practiceId);
-    if (!coach.isDestroyed()) coach.webContents.send('wwc:data-changed');
+    if (event.sender !== monkeytype.webContents || !isCapturedTest(payload)) return;
+    const { source, practiceId } = classifyTest(payload, database);
+    insertTest(database, payload, source, practiceId);
+    toCoach('wwc:data-changed');
   });
 });
 

@@ -10,6 +10,12 @@ const api = {
     ipcRenderer.on('wwc:data-changed', listener);
     return () => ipcRenderer.removeListener('wwc:data-changed', listener);
   },
+  /** Calls back as a practice run starts, finishes or fails (also when started by the hotkey). */
+  onPracticeStatus(cb: (status: { state: 'running' | 'done' | 'error'; error?: string }) => void): () => void {
+    const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) => cb(status);
+    ipcRenderer.on('wwc:practice-status', listener);
+    return () => ipcRenderer.removeListener('wwc:practice-status', listener);
+  },
   startPractice: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('wwc:start-practice'),
 };
 

@@ -116,3 +116,32 @@ export async function typeWords(page: Page, words: string[], opts: TypeOptions =
   }
   return keys;
 }
+
+/**
+ * Plays one 100-word standard test with slow `e` and `o` and three uncorrected errors on the most
+ * common other letter, and waits for the result screen. 100 words (not fewer) so a few bigrams
+ * reach the minimum attempts.
+ */
+export async function playSlowLetterTest(page: Page): Promise<{ words: string[]; slow: string[]; errorLetter: string }> {
+  await selectWordsMode(page, 100);
+  const words = await readWords(page);
+  expect(words).toHaveLength(100);
+
+  const counts = new Map<string, number>();
+  for (const ch of words.join('')) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+  const slow = ['e', 'o'];
+  for (const l of slow) expect(counts.get(l) ?? 0, `letter ${l} in the words`).toBeGreaterThan(8);
+  const errorLetter = [...counts].filter(([l]) => !slow.includes(l) && l !== 'q').sort((a, b) => b[1] - a[1])[0][0];
+  const errors: NonNullable<TypeOptions['errors']> = [];
+  for (const [w, word] of words.entries()) {
+    const c = [...word].findIndex((ch, i) => i > 0 && ch === errorLetter);
+    if (c > 0 && errors.length < 3 && (errors.length === 0 || w - errors[errors.length - 1].word >= 5)) {
+      errors.push({ word: w, char: c, typed: 'q' });
+    }
+  }
+  expect(errors).toHaveLength(3);
+
+  await typeWords(page, words, { baseDelay: 70, slowLetters: slow.join(''), slowDelay: 450, errors });
+  await expect(page.locator(SEL.result)).toBeAttached({ timeout: 20_000 });
+  return { words, slow, errorLetter };
+}
