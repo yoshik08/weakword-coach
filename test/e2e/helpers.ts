@@ -11,13 +11,16 @@ export interface Launched {
   userData: string;
 }
 
-/** Launches the app with a throwaway profile and no focus stealing (WWC_TEST=1). */
-export async function launchApp(): Promise<Launched> {
+/**
+ * Launches the app with a throwaway profile and no focus stealing (WWC_TEST=1).
+ * With an executablePath (default: env WWC_EXE) it launches that packaged build instead of the repo.
+ */
+export async function launchApp(executablePath: string | undefined = process.env.WWC_EXE): Promise<Launched> {
   const userData = mkdtempSync(path.join(tmpdir(), 'wwc-e2e-'));
   // A parent shell may export ELECTRON_RUN_AS_NODE, which would make Electron run as plain Node.
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env as Record<string, string>;
   const app = await electron.launch({
-    args: ['.'],
+    ...(executablePath ? { executablePath, args: [] } : { args: ['.'] }),
     env: { ...env, WWC_TEST: '1', WWC_USER_DATA: userData },
   });
 
@@ -118,14 +121,16 @@ export async function typeWords(page: Page, words: string[], opts: TypeOptions =
 }
 
 /**
- * Plays one 100-word standard test with slow `e` and `o` and three uncorrected errors on the most
- * common other letter, and waits for the result screen. 100 words (not fewer) so a few bigrams
- * reach the minimum attempts.
+ * Plays one standard test (default 100 words, so a few bigrams reach the minimum attempts) with slow
+ * `e` and `o` and three uncorrected errors on the most common other letter, and waits for the result screen.
  */
-export async function playSlowLetterTest(page: Page): Promise<{ words: string[]; slow: string[]; errorLetter: string }> {
-  await selectWordsMode(page, 100);
+export async function playSlowLetterTest(
+  page: Page,
+  { words: count = 100, slowDelay = 450 }: { words?: number; slowDelay?: number } = {},
+): Promise<{ words: string[]; slow: string[]; errorLetter: string }> {
+  await selectWordsMode(page, count);
   const words = await readWords(page);
-  expect(words).toHaveLength(100);
+  expect(words).toHaveLength(count);
 
   const counts = new Map<string, number>();
   for (const ch of words.join('')) counts.set(ch, (counts.get(ch) ?? 0) + 1);
@@ -141,7 +146,7 @@ export async function playSlowLetterTest(page: Page): Promise<{ words: string[];
   }
   expect(errors).toHaveLength(3);
 
-  await typeWords(page, words, { baseDelay: 70, slowLetters: slow.join(''), slowDelay: 450, errors });
+  await typeWords(page, words, { baseDelay: 70, slowLetters: slow.join(''), slowDelay, errors });
   await expect(page.locator(SEL.result)).toBeAttached({ timeout: 20_000 });
   return { words, slow, errorLetter };
 }

@@ -102,4 +102,8 @@ export interface PracticePlan {
 export interface CoachData {
   standard: Analysis;
   practice: Analysis;
+  /** Newest tests of both sources, oldest first. */
+  trend: TrendPoint[];
+  /** The standard analysis's focus keys: what the weak-spot line measures. */
+  focusKeys: string[];
 }

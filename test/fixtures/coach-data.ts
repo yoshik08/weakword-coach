@@ -1,5 +1,5 @@
 // Realistic CoachData for iterating on the coach UI without a real Monkeytype run.
-import type { Analysis, CoachData, ItemStat, TestSource } from '../../src/shared/types';
+import type { Analysis, CoachData, ItemStat, TestSource, TrendPoint } from '../../src/shared/types';
 
 const TARGET = 68;
 
@@ -46,9 +46,20 @@ const words = [
 
 const empty = (source: TestSource): Analysis => ({ source, targetWpm: TARGET, testCount: 0, keys: [], bigrams: [], words: [], allKeys: [] });
 
+// Twelve tests: the weak-key speed climbs, with practice tests (every fourth) a little ahead.
+const trend: TrendPoint[] = Array.from({ length: 12 }, (_, i) => ({
+  testId: i + 1,
+  endedAt: 1000 * (i + 1),
+  source: i % 4 === 3 ? 'practice' : 'standard',
+  wpm: 52 + i * 1.2 + (i % 3),
+  weakSpotWpm: 34 + i * 2.6 + (i % 4 === 3 ? 4 : 0),
+}));
+
 export const coachData: CoachData = {
   standard: analysis('standard', 12, keys, bigrams, words),
   practice: empty('practice'),
+  trend,
+  focusKeys: ['e', 'o', 'p', 'r'],
 };
 
 export const coachDataWithPractice: CoachData = {
@@ -56,4 +67,4 @@ export const coachDataWithPractice: CoachData = {
   practice: { ...analysis('practice', 3, keys, bigrams, words) },
 };
 
-export const coachDataEmpty: CoachData = { standard: empty('standard'), practice: empty('practice') };
+export const coachDataEmpty: CoachData = { standard: empty('standard'), practice: empty('practice'), trend: [], focusKeys: [] };

@@ -1,5 +1,5 @@
 // Pure analysis: turns captured keystrokes into per-key, per-bigram and per-word speed/accuracy stats.
-import type { Analysis, ItemStat, StoredTest, TestSource } from './types';
+import type { Analysis, ItemStat, StoredTest, TestSource, TrendPoint } from './types';
 
 /** A gap longer than this is a pause (distraction), not typing speed. */
 export const PAUSE_MS = 2000;
@@ -46,6 +46,12 @@ function slot(map: Map<string, Acc>, item: string): Acc {
   return acc;
 }
 
+/** ms since the previous keystroke if keystroke i is a correct, timed follow-on to a correct one; else null. */
+function keySample(ks: StoredTest['keystrokes'], i: number): number | null {
+  const gap = i > 0 ? ks[i].t - ks[i - 1].t : 0;
+  return ks[i].correct && ks[i - 1]?.correct && timed(gap) ? gap : null;
+}
+
 function addKeysAndBigrams(test: StoredTest, keys: Map<string, Acc>, bigrams: Map<string, Acc>): void {
   const ks = test.keystrokes;
   for (let i = 0; i < ks.length; i++) {
@@ -57,8 +63,9 @@ function addKeysAndBigrams(test: StoredTest, keys: Map<string, Acc>, bigrams: Ma
     const a = slot(keys, key);
     a.attempts++;
     a.total++;
+    const sample = keySample(ks, i);
     if (!k.correct) a.errors++;
-    else if (p?.correct && timed(k.t - p.t)) a.samples.push(k.t - p.t);
+    else if (sample !== null) a.samples.push(sample);
 
     // p.correct implies p is a real key (never Backspace) typed as expected.
     const pl = p?.correct && p.wordIndex === k.wordIndex ? letter(p.expected) : null;
@@ -152,6 +159,29 @@ export function analyze(tests: StoredTest[], source: TestSource, opts: AnalyzeOp
     words: ranked(words, minWordAttempts, targetMs),
     allKeys: ranked(keys, 1, targetMs),
   };
+}
+
+/** Newest 50 tests of both sources, oldest first: Monkeytype's wpm and the speed on the focus keys. */
+export function trend(tests: StoredTest[], focusKeys: string[], maxTests = 50): TrendPoint[] {
+  return [...tests]
+    .sort((a, b) => b.endedAt - a.endedAt || b.id - a.id)
+    .slice(0, maxTests)
+    .reverse()
+    .map((t) => {
+      const samples: number[] = [];
+      t.keystrokes.forEach((k, i) => {
+        const sample = keySample(t.keystrokes, i);
+        const key = letter(k.expected);
+        if (sample !== null && key && focusKeys.includes(key)) samples.push(sample);
+      });
+      return {
+        testId: t.id,
+        endedAt: t.endedAt,
+        source: t.source,
+        wpm: t.result.wpm,
+        weakSpotWpm: samples.length > 0 ? 12000 / median(samples) : null,
+      };
+    });
 }
 
 /** Median wpm of the newest 10 tests that have one; 40 when there are none; clamped to 20..250. */

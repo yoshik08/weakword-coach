@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain, session, shell, type BrowserWindowConstructorOptions } from 'electron';
 import { randomInt } from 'node:crypto';
 import path from 'node:path';
-import { analyze, deriveTargetWpm } from '../shared/analysis';
-import { generatePractice } from '../shared/generator';
+import { analyze, deriveTargetWpm, trend } from '../shared/analysis';
+import { generatePractice, pickFocusKeys } from '../shared/generator';
 import type { CapturedTest, CoachData, TestSource } from '../shared/types';
 import { findPracticeSession, getTests, insertPracticeSession, insertTest, openDb, type Db } from './db';
 import { isCapturedTest } from './validate';
@@ -202,9 +202,13 @@ app.whenReady().then(() => {
     if (event.sender !== coach.webContents) throw new Error('not available');
     const standard = getTests(database, { source: 'standard', limit: 50 });
     const targetWpm = deriveTargetWpm(standard);
+    const analysis = analyze(standard, 'standard', { targetWpm });
+    const focusKeys = pickFocusKeys(analysis);
     return {
-      standard: analyze(standard, 'standard', { targetWpm }),
+      standard: analysis,
       practice: analyze(getTests(database, { source: 'practice', limit: 50 }), 'practice', { targetWpm }),
+      trend: trend(getTests(database, { limit: 50 }), focusKeys),
+      focusKeys,
     };
   });
 

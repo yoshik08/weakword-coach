@@ -25,12 +25,15 @@
   --ui: 'Geist', 'Segoe UI Variable Text', system-ui, sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --grid: #232326;
+  --s-overall: #3987e5;
+  --s-weak: #d95926;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--black); color: var(--text); }
 body { font: 400 14px/1.45 var(--ui); -webkit-font-smoothing: antialiased; }
-main { padding: 24px 24px 16px; }
+main { display: flex; flex-direction: column; min-height: 100vh; padding: 24px 24px 0; }
 [hidden] { display: none !important; }
 
 :focus-visible { outline: 2px solid #f5f5f7; outline-offset: 2px; }
@@ -46,7 +49,7 @@ h2 { margin: 0; font: 600 15px/1.2 var(--display); font-stretch: 114%; }
 .quiet { margin: 6px 0 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 /* Keyboard heatmap */
-.keyboard { position: relative; margin-bottom: 22px; }
+.keyboard { position: relative; margin-bottom: 26px; }
 .keys { display: grid; gap: 5px; container-type: inline-size; }
 /* Ten keys fill the width; the lower rows are staggered like a real keyboard. */
 .row { --k: calc((100cqw - 45px) / 10); display: flex; gap: 5px; }
@@ -152,7 +155,16 @@ td.speed { color: var(--text); }
 .spots:has(.empty:not([hidden])) table { display: none; }
 .spots:has(.empty:not([hidden])) .segmented { display: none; }
 
-footer { margin-top: 16px; }
+/* The practice button stays visible while the rest of the window scrolls. */
+footer {
+  position: sticky;
+  bottom: 0;
+  margin: auto -24px 0;
+  padding: 14px 24px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--black);
+}
+.spots { margin-bottom: 24px; }
 .primary {
   width: 100%;
   padding: 13px 18px;
@@ -169,8 +181,8 @@ footer { margin-top: 16px; }
 .primary:disabled { background: var(--raised); color: var(--faint); cursor: default; }
 footer .quiet { text-align: center; }
 footer .quiet:empty { display: none; }
-footer #practice-status { margin-top: 10px; color: var(--text); }
-.hint { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; text-align: center; }
+footer #practice-status { margin-top: 8px; color: var(--text); }
+.hint { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; text-align: center; }
 kbd {
   display: inline-block;
   margin: 0 2px;
@@ -189,3 +201,32 @@ kbd {
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: #2c2c2e; border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Progress chart */
+.trend { margin-bottom: 26px; }
+.trend h2 { margin-bottom: 10px; }
+.trend .empty { margin-top: 0; }
+.trend-box { position: relative; }
+.trend-plot { display: block; border-radius: 8px; }
+.trend-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.overall { --s: var(--s-overall); }
+.weak { --s: var(--s-weak); }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.tick { fill: var(--muted); font: 400 11px var(--ui); font-variant-numeric: tabular-nums; }
+.target { stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 4; }
+.target-label { fill: var(--muted); font: 400 11px var(--ui); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--black); stroke-width: 3px; }
+.line { fill: none; stroke: var(--s); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pt { fill: var(--s); stroke: var(--black); stroke-width: 4; paint-order: stroke; transition: r 0.15s var(--ease-out); }
+.pt.practice { fill: var(--black); stroke: var(--s); stroke-width: 2; paint-order: normal; }
+.pt.dim:not(.active) { display: none; }
+.pt.active { r: 5.5; }
+.cross { stroke: var(--faint); stroke-width: 1; opacity: 0; }
+.cross.on { opacity: 1; }
+.chart-tip { top: 4px; flex-direction: column; align-items: stretch; gap: 3px; padding: 8px 12px; transform: none; }
+.chart-tip strong { font-size: 13px; margin-bottom: 2px; }
+.chart-tip .row { display: flex; align-items: center; gap: 6px; }
+.key-line { display: inline-block; flex: none; width: 14px; height: 2px; border-radius: 1px; background: var(--s); }
+.trend-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+.trend-legend li { display: flex; align-items: center; gap: 6px; }
+.hollow { width: 12px; height: 12px; }
+.hollow circle { fill: var(--black); stroke: var(--muted); stroke-width: 2; }

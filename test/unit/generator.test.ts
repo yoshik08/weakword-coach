@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generatePractice, type GenerateOptions } from '../../src/shared/generator';
+import { generatePractice, pickFocusKeys, type GenerateOptions } from '../../src/shared/generator';
 import type { Analysis, ItemStat } from '../../src/shared/types';
 
 /** A stat whose weakness is given; confidence is its reciprocal (so weakness > 1 means "weak"). */
@@ -61,6 +61,12 @@ describe('focus selection', () => {
     expect(generatePractice(opts({ analysis: none })).focusKeys).toEqual(['z', 'q']);
     const one = analysisOf([stat('z', 2), stat('q', 0.9), stat('j', 0.8)]);
     expect(generatePractice(opts({ analysis: one })).focusKeys).toEqual(['z', 'q']);
+  });
+
+  it('pickFocusKeys applies the same rule', () => {
+    expect(pickFocusKeys(analysis)).toEqual(FOCUS_KEYS);
+    expect(pickFocusKeys(analysisOf([stat('z', 0.95), stat('q', 0.9), stat('j', 0.8)]))).toEqual(['z', 'q']);
+    expect(pickFocusKeys(analysisOf([]))).toEqual([]);
   });
 
   it('works with bigrams only', () => {

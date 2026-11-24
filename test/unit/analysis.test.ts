@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyze, deriveTargetWpm, PAUSE_MS } from '../../src/shared/analysis';
+import { analyze, deriveTargetWpm, PAUSE_MS, trend } from '../../src/shared/analysis';
 import type { Analysis, ItemStat, StoredTest } from '../../src/shared/types';
 import { makeTest } from '../fixtures/makeTest';
 
@@ -265,5 +265,38 @@ describe('edge cases', () => {
     expect(nums.length).toBeGreaterThan(0);
     expect(nums.every(Number.isFinite)).toBe(true);
     expect(JSON.parse(JSON.stringify(a))).toEqual(a);
+  });
+});
+
+describe('trend', () => {
+  it('lists the newest 50 tests of both sources, oldest first', () => {
+    const tests = Array.from({ length: 60 }, (_, i) => makeTest(['tea'], { id: i + 1, endedAt: 1000 - i, source: i % 2 ? 'practice' : 'standard', wpm: 40 + i }));
+    const points = trend(tests, ['e']);
+    expect(points).toHaveLength(50);
+    // endedAt falls as the index grows, so the newest are ids 1..50; oldest first means id 50 leads.
+    expect(points[0].testId).toBe(50);
+    expect(points[49].testId).toBe(1);
+    expect(points[49]).toMatchObject({ source: 'standard', wpm: 40 });
+    expect(points[48].source).toBe('practice');
+  });
+
+  it('measures the median speed on the focus keys only, with the same timing rule as analyze', () => {
+    const t = makeTest(['tea', 'one'], { slow: { e: 300, o: 150 }, wpm: 55 });
+    // e: 300, 300 (tEa, onE); o: 150 after the Space. Median of focus samples {300, 300, 150} is 300.
+    expect(trend([t], ['e', 'o'])[0]).toMatchObject({ wpm: 55, weakSpotWpm: 40 });
+    expect(trend([t], ['e'])[0].weakSpotWpm).toBe(40);
+    const fromAnalysis = find(run([t]).keys, 'e').wpm;
+    expect(trend([t], ['e'])[0].weakSpotWpm).toBe(fromAnalysis);
+  });
+
+  it('skips untimed samples (first key, pauses, errors) and is null when nothing is timed', () => {
+    expect(trend([makeTest(['ea'])], ['e'])[0].weakSpotWpm).toBeNull(); // the first key of a test is untimed
+    expect(trend([makeTest(['ea'])], ['a'])[0].weakSpotWpm).toBe(120);
+    const paused = makeTest(['tea'], { pauses: [{ word: 0, pos: 1, ms: PAUSE_MS + 1 }] });
+    expect(trend([paused], ['e'])[0].weakSpotWpm).toBeNull();
+    expect(trend([makeTest(['tea'], { errors: [{ word: 0, pos: 1 }] })], ['e'])[0].weakSpotWpm).toBeNull();
+    expect(trend([makeTest(['tea'])], [])[0].weakSpotWpm).toBeNull();
+    expect(trend([makeTest(['tea'], { wpm: null })], ['e'])[0].wpm).toBeNull();
+    expect(trend([], ['e'])).toEqual([]);
   });
 });

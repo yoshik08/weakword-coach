@@ -1,6 +1,8 @@
 // Coach window UI: keyboard heatmap, weak spots table, practice button.
 import type { CoachApi } from '../preload/coach';
-import type { Analysis, ItemStat } from '../shared/types';
+import type { Analysis, CoachData, ItemStat } from '../shared/types';
+import { $, el } from './dom';
+import { renderTrend } from './trend';
 
 declare global {
   interface Window {
@@ -17,14 +19,6 @@ const EMPTY: Record<Kind, string> = {
 };
 const ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
 const TOP_N = 8;
-
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const el = (tag: string, props: Record<string, string> = {}, text?: string) => {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) e.setAttribute(k, v);
-  if (text !== undefined) e.textContent = text;
-  return e;
-};
 
 // Confidence colour: red at <= 0.5, amber at 0.8, green at >= 1; hue, saturation and lightness blend between the stops.
 const STOPS: [number, [number, number, number]][] = [
@@ -132,7 +126,9 @@ function showTip(key: HTMLButtonElement): void {
   const half = tip.offsetWidth / 2;
   const x = Math.min(Math.max(k.left + k.width / 2 - box.left, half), box.width - half);
   tip.style.left = `${x}px`;
-  tip.style.top = `${k.top - box.top - tip.offsetHeight - 8}px`;
+  // Above the key, except on the top row where it would cover the header: then below.
+  const above = k.top - box.top - tip.offsetHeight - 8;
+  tip.style.top = `${above >= 0 ? above : k.bottom - box.top + 8}px`;
 }
 const hideTip = () => ($('tip').hidden = true);
 
@@ -173,13 +169,14 @@ function selectTab(next: Kind): void {
 
 // Page
 
-function render(all: { standard: Analysis; practice: Analysis }): void {
+function render(all: CoachData): void {
   const a = all.standard;
   data = a;
   const n = a.testCount;
   $('summary').textContent = n === 0 ? 'No tests yet' : `Based on ${n} ${n === 1 ? 'test' : 'tests'}, target ${Math.round(a.targetWpm)} wpm`;
   renderKeyboard(a);
   renderTable(a);
+  renderTrend(all.trend, all.focusKeys, a.targetWpm);
   $('empty').hidden = n > 0;
   const sessions = all.practice.testCount;
   // Practising needs something to practise: at least one standard test.

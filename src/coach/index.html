@@ -24,6 +24,20 @@
       <div id="tip" class="tip" aria-hidden="true" hidden></div>
     </section>
 
+    <section class="trend" aria-labelledby="trend-title">
+      <h2 id="trend-title">Progress</h2>
+      <div class="trend-box" hidden>
+        <div id="trend-plot" class="trend-plot" tabindex="0" role="img"></div>
+        <div id="trend-tip" class="tip chart-tip" aria-hidden="true" hidden></div>
+      </div>
+      <ul id="trend-legend" class="trend-legend" hidden>
+        <li><i class="key-line overall"></i>Overall wpm</li>
+        <li><i class="key-line weak"></i><span id="trend-weak">Weak keys</span></li>
+        <li><svg class="hollow" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" /></svg>Practice test</li>
+      </ul>
+      <p id="trend-empty" class="empty">Your progress shows up after two tests.</p>
+    </section>
+
     <section class="spots" aria-labelledby="spots-title">
       <div class="spots-head">
         <h2 id="spots-title">Weak spots</h2>

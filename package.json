@@ -4,14 +4,15 @@
   "private": true,
   "description": "Adaptive typing practice layered on top of monkeytype.com",
   "main": "dist/main/main.js",
-  "author": "Weakword Coach",
+  "author": "Weakword Coach contributors",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
     "start": "npm run build && electron .",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
-    "dist": "npm run build && electron-builder --win nsis"
+    "dist": "npm run build && electron-builder --win nsis",
+    "test:packaged": "node scripts/test-packaged.mjs"
   },
   "build": {
     "appId": "com.weakwordcoach.app",
@@ -22,7 +23,13 @@
     },
     "files": [
       "dist/**",
-      "package.json"
+      "!dist/**/*.map",
+      "package.json",
+      "!node_modules/better-sqlite3/{deps,src,binding.gyp,README.md}",
+      "!node_modules/better-sqlite3/prebuilds/!(win32-x64.node)",
+      "!node_modules/better-sqlite3/lib/{darwin,linux,linuxmusl}-*.js",
+      "!node_modules/node-addon-api",
+      "!node_modules/@fontsource-variable"
     ],
     "win": {
       "target": [
@@ -32,13 +39,18 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "copyright": "Copyright © 2026 Weakword Coach contributors",
+    "electronLanguages": [
+      "en-US"
+    ]
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",

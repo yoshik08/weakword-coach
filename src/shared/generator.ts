@@ -38,6 +38,14 @@ interface Candidate {
   weight: number;
 }
 
+/** The keys to practise: up to 4 below target, else the 2 weakest. */
+function focusKeyStats(analysis: Analysis): ItemStat[] {
+  const below = analysis.keys.filter((s) => s.confidence < 1).slice(0, MAX_FOCUS_KEYS);
+  return below.length < 2 ? analysis.keys.slice(0, 2) : below;
+}
+
+export const pickFocusKeys = (analysis: Analysis): string[] => focusKeyStats(analysis).map((s) => s.item);
+
 export function generatePractice(opts: GenerateOptions): PracticePlan {
   const { analysis, wordList, commonWords } = opts;
   const length = opts.length ?? 30;
@@ -47,13 +55,12 @@ export function generatePractice(opts: GenerateOptions): PracticePlan {
 
   // 1. Focus selection.
   const weak = (list: ItemStat[]) => list.filter((s) => s.confidence < 1);
-  let keyStats = weak(analysis.keys).slice(0, MAX_FOCUS_KEYS);
-  if (keyStats.length < 2) keyStats = analysis.keys.slice(0, 2);
+  const keyStats = focusKeyStats(analysis);
   const bigramStats = weak(analysis.bigrams).slice(0, MAX_FOCUS_BIGRAMS);
   if (keyStats.length === 0 && bigramStats.length === 0) {
     throw new Error('Not enough data yet: finish a few Monkeytype tests first.');
   }
-  const focusKeys = keyStats.map((s) => s.item);
+  const focusKeys = pickFocusKeys(analysis);
   const focusBigrams = bigramStats.map((s) => s.item);
   const focusItems = [...focusKeys, ...focusBigrams];
   const hasFocus = (word: string) => focusItems.some((f) => word.includes(f));
