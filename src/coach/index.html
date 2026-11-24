@@ -2,14 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; font-src 'self'" />
   <title>Weakword Coach</title>
   <link rel="stylesheet" href="coach.css" />
 </head>
 <body>
   <main>
-    <h1>Weakword Coach</h1>
-    <p class="muted">Finish a Monkeytype test to see your weak spots.</p>
+    <header>
+      <h1>Weakword Coach</h1>
+      <p id="summary" class="quiet">Loading</p>
+    </header>
+
+    <section class="keyboard" aria-label="Typing confidence by key">
+      <div id="keys" class="keys"></div>
+      <div class="legend" aria-hidden="true">
+        <span>Needs work</span>
+        <span class="ramp"></span>
+        <span>At target</span>
+      </div>
+      <div id="tip" class="tip" aria-hidden="true" hidden></div>
+    </section>
+
+    <section class="spots" aria-labelledby="spots-title">
+      <div class="spots-head">
+        <h2 id="spots-title">Weak spots</h2>
+        <div id="tabs" class="segmented" role="tablist" aria-label="Kind of weak spot" data-tab="0">
+          <span class="thumb" aria-hidden="true"></span>
+          <button role="tab" id="tab-keys" aria-selected="true" data-kind="keys">Letters</button>
+          <button role="tab" id="tab-bigrams" aria-selected="false" tabindex="-1" data-kind="bigrams">Bigrams</button>
+          <button role="tab" id="tab-words" aria-selected="false" tabindex="-1" data-kind="words">Words</button>
+        </div>
+      </div>
+      <table id="table" aria-labelledby="spots-title">
+        <thead>
+          <tr><th id="item-head" scope="col">Letter</th><th scope="col">wpm</th><th scope="col">Errors</th><th scope="col">Attempts</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="empty" hidden>Finish a Monkeytype test to see your weak spots.</p>
+    </section>
+
+    <footer>
+      <button id="practice" class="primary" type="button" disabled>Practice my weak spots</button>
+      <p id="practice-note" class="quiet" aria-live="polite"></p>
+    </footer>
   </main>
   <script src="coach.js"></script>
 </body>

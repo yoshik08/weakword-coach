@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, session, shell, type BrowserWindowConstructorOptions } from 'electron';
 import path from 'node:path';
-import type { CapturedTest, TestSource } from '../shared/types';
-import { insertTest, openDb, type Db } from './db';
+import { analyze, deriveTargetWpm } from '../shared/analysis';
+import type { CapturedTest, CoachData, TestSource } from '../shared/types';
+import { getTests, insertTest, openDb, type Db } from './db';
 import { isCapturedTest } from './validate';
 
 let db: Db | undefined;
@@ -106,6 +107,16 @@ app.whenReady().then(() => {
   db = openDb(path.join(app.getPath('userData'), 'weakword.db'));
   const monkeytype = createMonkeytypeWindow();
   const coach = createCoachWindow(monkeytype);
+
+  ipcMain.handle('wwc:get-coach-data', (event): CoachData => {
+    if (event.sender !== coach.webContents || !db) throw new Error('not available');
+    const standard = getTests(db, { source: 'standard', limit: 50 });
+    const targetWpm = deriveTargetWpm(standard);
+    return {
+      standard: analyze(standard, 'standard', { targetWpm }),
+      practice: analyze(getTests(db, { source: 'practice', limit: 50 }), 'practice', { targetWpm }),
+    };
+  });
 
   ipcMain.on('wwc:test-finished', (event, payload: unknown) => {
     if (event.sender !== monkeytype.webContents || !db || !isCapturedTest(payload)) return;

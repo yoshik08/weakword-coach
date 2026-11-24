@@ -97,3 +97,9 @@ export interface PracticePlan {
   focusWords: string[];
   seed: number;
 }
+
+/** What the coach window renders: standard tests and practice sessions are analysed separately. */
+export interface CoachData {
+  standard: Analysis;
+  practice: Analysis;
+}
