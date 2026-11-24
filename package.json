@@ -65,7 +65,8 @@
   "allowScripts": {
     "electron@45.4.1": true,
     "esbuild@0.28.2": true,
-    "electron-winstaller": false
+    "electron-winstaller": false,
+    "better-sqlite3": false
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

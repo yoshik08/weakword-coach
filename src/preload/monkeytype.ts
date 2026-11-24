@@ -24,7 +24,7 @@ function wordIndexOf(word: Element): number {
 function onKeydown(e: KeyboardEvent): void {
   if (e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
   const box = e.target;
-  if (!(box instanceof HTMLTextAreaElement) || box.id !== 'wordsInput') return;
+  if (!(box instanceof HTMLTextAreaElement) || !box.matches(SEL.wordsInput)) return;
   if (document.querySelector(SEL.result) || document.querySelector(SEL.openDialog)) return;
   const active = document.querySelector(SEL.activeWord);
   recorder.keydown({

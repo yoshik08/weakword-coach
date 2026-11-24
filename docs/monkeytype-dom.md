@@ -5,8 +5,6 @@ Live site: https://monkeytype.com, fresh guest, headless Chromium (Playwright), 
 
 IMPORTANT: this is the **new SolidJS frontend**. Most old selectors from memory (`#result`'s inner ids like `#result .stats .wpm`, `#resultWordsHistory`, `.word.active` containing `<letter>` with `.correct`, `#customTextModal`, `#cookiesModal`, `.pageTest`, `#liveWpm`...) are gone or renamed. Everything below was verified live unless marked (source) / (untested).
 
-Scratch scripts + trimmed HTML/PNG snapshots (for later agents):
-`C:\Users\yoshik\AppData\Local\Temp\claude\ac4c155a3b2c4c55\8b1edfe1-1e09-4a8b-b997-6aa7d72e6b29\scratchpad\mtdom\snapshots\` (index at bottom). Scripts `s1.js`..`s18.js` + `lib.js`/`lib2.js` are in the parent `mtdom\` folder.
 
 ---
 
@@ -141,7 +139,7 @@ So at keydown do not trust `.word.active` alone. Robust approach: keep your own 
 
 Word DOM windowing: earlier word elements are **removed** after the line jump (words 50: at word 25 the DOM held `data-wordindex` 12..49 only). Always look words up by `data-wordindex`, never by position; snapshot/record a word's text before it scrolls off. Time mode streams words in as you go. Words/custom (<=100 words) are generated up front.
 
-DOM after a word is committed, examples (full snapshots in `snapshots/`):
+DOM after a word is committed, examples:
 ```html
 <!-- committed incorrectly: wrong letter, an extra letter at the end -->
 <div data-ui-element="word" data-wordindex="1" data-ui-state="typedIncorrectly" class="word typed error ...">
@@ -278,25 +276,3 @@ If the user changes `quickRestart` to `tab|esc|enter`, those keys restart direct
 - Playwright `page.locator(...)getByRole('button',{name:'words'})` did **not** match config buttons (accessible name came out empty with the icon); use CSS + text instead.
 - Headless Chromium + Cloudflare: not challenged in testing on 2026-11-24; ads/trackers were blocked at the route level.
 - `restartIfNotStarted` on `window` focus/visibility means that alt-tabbing to the app before typing regenerates words (words/time modes).
-
----
-
-## Snapshot index (`...\mtdom\snapshots\`)
-
-| File | Content |
-|---|---|
-| `01-firstload.png`, `01-firstload-full.html` | first load (cookie modal + merch banner), full page HTML |
-| `02-cookies-modal.html` | cookie dialog |
-| `03-app-initial.html`, `03b-app-seeded-cookies.html` | `#app` markup, initial + with seeded `acceptedCookies` |
-| `04-words-before.html`, `04-test-before-typing.html` | `#words` / `#typingTest` before typing (words 10) |
-| `05-words-after-3chars.html`, `06-words-after-wrong.html`, `07-words-after-backspace.html`, `08-words-after-space.html`, `09-words-after-word1-incorrect.html`, `10-words-after-early-space.html`, `11-words-last-typed.html` | `#words` at each stage |
-| `12-result.html`, `12-result.png` | `#result` of a finished words/10 test |
-| `13-typingTest-idle.html`, `14-typingTest-active.html` | `#typingTest` idle vs after first key |
-| `15-escape-commandline.png`, `16-ctrlshiftp.png`, `16-commandline-modal.html` | command line |
-| `17-testconfig-custom-mode.html` | `[data-ui-element=testConfig]` with custom mode |
-| `18-custom-modal.png`, `18-custom-text-modal.html` | custom text modal |
-| `19-typingTest-words25.html` | `#typingTest` words 25 |
-| `20-result-custom.html` | result of custom test |
-| `21-custom30-words.html`, `21-custom30.png` | the stale-wordset 30-word case |
-| `22-typingTest-time-active.html` | time mode running |
-| `events.json` | window-capture event log (keydown/beforeinput/input/keyup, all `isTrusted: true`) |
