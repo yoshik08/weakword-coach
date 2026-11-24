@@ -45,7 +45,8 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Weakword-Coach-Setup-${version}.${ext}"
     },
     "copyright": "Copyright © 2026 Weakword Coach contributors",
     "electronLanguages": [
