@@ -1,0 +1,56 @@
+{
+  "name": "weakword-coach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Adaptive typing practice layered on top of monkeytype.com",
+  "main": "dist/main/main.js",
+  "author": "Weakword Coach",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && electron .",
+    "test": "vitest run",
+    "test:e2e": "npm run build && playwright test",
+    "dist": "npm run build && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.weakwordcoach.app",
+    "productName": "Weakword Coach",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "electron": "45.4.1",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  },
+  "allowScripts": {
+    "electron@45.4.1": true,
+    "esbuild@0.28.2": true,
+    "electron-winstaller": false
+  }
+}

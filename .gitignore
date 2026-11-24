@@ -1,0 +1,15 @@
+node_modules/
+dist/
+release/
+*.db
+*.db-*
+*.sqlite
+test-results/
+playwright-report/
+resources/wordlists/
+.env
+
+# agent skills installed for development (not part of the app)
+.agents/
+.claude/
+skills-lock.json
