@@ -1,5 +1,10 @@
-import { app, BrowserWindow, session, shell, type BrowserWindowConstructorOptions } from 'electron';
+import { app, BrowserWindow, ipcMain, session, shell, type BrowserWindowConstructorOptions } from 'electron';
 import path from 'node:path';
+import type { CapturedTest, TestSource } from '../shared/types';
+import { insertTest, openDb, type Db } from './db';
+import { isCapturedTest } from './validate';
+
+let db: Db | undefined;
 
 const TEST = process.env.WWC_TEST === '1';
 const PARTITION = 'persist:monkeytype';
@@ -91,9 +96,24 @@ function createCoachWindow(anchor: BrowserWindow): BrowserWindow {
   return win;
 }
 
+// Phase 4 decides here whether a finished test was a practice session (and which one).
+function classifyTest(_test: CapturedTest): { source: TestSource; practiceId: number | null } {
+  return { source: 'standard', practiceId: null };
+}
+
 app.whenReady().then(() => {
   if (!gotLock) return;
-  createCoachWindow(createMonkeytypeWindow());
+  db = openDb(path.join(app.getPath('userData'), 'weakword.db'));
+  const monkeytype = createMonkeytypeWindow();
+  const coach = createCoachWindow(monkeytype);
+
+  ipcMain.on('wwc:test-finished', (event, payload: unknown) => {
+    if (event.sender !== monkeytype.webContents || !db || !isCapturedTest(payload)) return;
+    const { source, practiceId } = classifyTest(payload);
+    insertTest(db, payload, source, practiceId);
+    if (!coach.isDestroyed()) coach.webContents.send('wwc:data-changed');
+  });
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => db?.close());

@@ -16,6 +16,7 @@
   "build": {
     "appId": "com.weakwordcoach.app",
     "productName": "Weakword Coach",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.6",
     "electron": "45.4.1",
     "electron-builder": "^26.18.0",
@@ -52,5 +54,8 @@
     "electron@45.4.1": true,
     "esbuild@0.28.2": true,
     "electron-winstaller": false
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.2.0"
   }
 }

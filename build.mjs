@@ -5,7 +5,8 @@ const common = { bundle: true, sourcemap: true, logLevel: 'info' };
 const cjs = { ...common, platform: 'node', format: 'cjs', external: ['electron'] };
 
 await Promise.all([
-  build({ ...cjs, entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.js' }),
+  // better-sqlite3 loads a native .node file, so it stays a runtime require.
+  build({ ...cjs, entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.js', external: ['electron', 'better-sqlite3'] }),
   // Preloads run sandboxed, so each must be one self-contained file.
   build({ ...cjs, entryPoints: ['src/preload/monkeytype.ts'], outfile: 'dist/preload/monkeytype.js' }),
   build({ ...cjs, entryPoints: ['src/preload/coach.ts'], outfile: 'dist/preload/coach.js' }),
