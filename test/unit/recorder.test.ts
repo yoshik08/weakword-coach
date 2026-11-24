@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Recorder } from '../../src/preload/recorder';
+import { KS_AFTER_ARTIFACT, KS_AFTER_BLUR, KS_REPEAT, KS_SHIFT } from '../../src/shared/types';
 
 const result = { wpm: 50, raw: 55, accuracy: 95, consistency: 80 };
 const finish = (r: Recorder) => r.finish({ result, mode: 'words 3', language: 'english', endedAt: 1000 });
@@ -186,6 +187,38 @@ describe('Recorder', () => {
       ['y', 100, true],
     ]);
     expect(finish(t.rec)).toBeNull();
+  });
+
+  it('records the caret position, Shift, repeats and the physical keys of letters', () => {
+    const rec = new Recorder();
+    rec.wordSeen(0, 'Aa');
+    rec.keydown({ key: 'A', timeStamp: 10, inputValue: ' ', domActiveIndex: 0, shift: true, code: 'KeyA' });
+    rec.keydown({ key: 'a', timeStamp: 20, inputValue: ' A', domActiveIndex: 0, repeat: true, code: 'KeyA' });
+    const test = finish(rec)!;
+    expect(test.keystrokes.map((k) => [k.pos, k.flags])).toEqual([[0, KS_SHIFT], [1, KS_REPEAT]]);
+    expect(test.keyCodes).toEqual({ a: 'KeyA' });
+  });
+
+  it('flags the first key after focus loss or input it cannot see (paste, IME, Ctrl+Backspace)', () => {
+    const t = setup(['abcd']);
+    t.press(['a']);
+    t.rec.blurred();
+    t.press(['b']);
+    t.rec.artifact();
+    t.press(['c', 'd']);
+    expect(finish(t.rec)!.keystrokes.map((k) => k.flags)).toEqual([0, KS_AFTER_BLUR, KS_AFTER_ARTIFACT, 0]);
+  });
+
+  it('gives every attempt its own id and a fresh one after a restart', () => {
+    const t = setup(['a']);
+    t.press(['a']);
+    const first = finish(t.rec)!.clientId;
+    t.rec.wordSeen(0, 'a');
+    t.value = ' ';
+    t.press(['a']);
+    const second = finish(t.rec)!.clientId;
+    expect(first).toMatch(/.{8,}/);
+    expect(second).not.toBe(first);
   });
 
   it('includes words up to the furthest one reached', () => {

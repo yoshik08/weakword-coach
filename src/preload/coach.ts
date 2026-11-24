@@ -1,22 +1,36 @@
-// Preload for the coach window (sandboxed): a narrow bridge to the main process.
+// Preload for the Coach panel view (sandboxed): a narrow bridge to the main process.
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CoachData } from '../shared/types';
+import type { CoachState, PracticeStatus } from '../shared/types';
+
+export type CoachAction =
+  | { type: 'start-session' }
+  | { type: 'quick' }
+  | { type: 'continue' }
+  | { type: 'end-session' }
+  | { type: 'retest' }
+  | { type: 'benchmark' }
+  | { type: 'set-benchmark'; key: string }
+  | { type: 'reset-period' }
+  | { type: 'start-baseline'; key: string }
+  | { type: 'set-setting'; key: 'hints' | 'warmup'; value: boolean };
+
+const on = <T>(channel: string, cb: (payload: T) => void): (() => void) => {
+  const listener = (_e: Electron.IpcRendererEvent, payload: T) => cb(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+};
 
 const api = {
-  getData: (): Promise<CoachData> => ipcRenderer.invoke('wwc:get-coach-data'),
-  /** Calls back after each stored test. Returns an unsubscribe function. */
-  onDataChanged(cb: () => void): () => void {
-    const listener = () => cb();
-    ipcRenderer.on('wwc:data-changed', listener);
-    return () => ipcRenderer.removeListener('wwc:data-changed', listener);
-  },
-  /** Calls back as a practice run starts, finishes or fails (also when started by the hotkey). */
-  onPracticeStatus(cb: (status: { state: 'running' | 'done' | 'error'; error?: string }) => void): () => void {
-    const listener = (_e: Electron.IpcRendererEvent, status: Parameters<typeof cb>[0]) => cb(status);
-    ipcRenderer.on('wwc:practice-status', listener);
-    return () => ipcRenderer.removeListener('wwc:practice-status', listener);
-  },
-  startPractice: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('wwc:start-practice'),
+  getState: (): Promise<CoachState> => ipcRenderer.invoke('wwc:get-state'),
+  act: (action: CoachAction): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('wwc:act', action),
+  /** The panel finished its closing animation: hide the view and give the keyboard back to the test. */
+  closed: (): void => ipcRenderer.send('wwc:panel-closed'),
+  /** Asks to close (the main process replies with onClose so the panel can animate out). */
+  requestClose: (): void => ipcRenderer.send('wwc:panel-request-close'),
+  onStateChanged: (cb: () => void) => on('wwc:state-changed', cb),
+  onPracticeStatus: (cb: (s: PracticeStatus) => void) => on('wwc:practice-status', cb),
+  onOpen: (cb: () => void) => on('wwc:panel-open', cb),
+  onClose: (cb: () => void) => on('wwc:panel-close', cb),
 };
 
 export type CoachApi = typeof api;

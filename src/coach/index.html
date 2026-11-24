@@ -8,62 +8,132 @@
   <link rel="stylesheet" href="coach.css" />
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Weakword Coach</h1>
-      <p id="summary" class="quiet">Loading</p>
+  <div id="scrim" class="scrim" aria-hidden="true"></div>
+  <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="title" tabindex="-1">
+    <header class="top">
+      <div>
+        <h1 id="title">Coach</h1>
+        <p id="summary" class="quiet">Loading</p>
+      </div>
+      <button id="close" class="icon-button" type="button" aria-label="Close Coach (Esc)">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg>
+      </button>
     </header>
 
-    <section class="keyboard" aria-label="Typing confidence by key">
-      <div id="keys" class="keys"></div>
-      <div class="legend" aria-hidden="true">
-        <span>Needs work</span>
-        <span class="ramp"></span>
-        <span>At target</span>
-      </div>
-      <div id="tip" class="tip" aria-hidden="true" hidden></div>
-    </section>
+    <div class="scroll" id="scroll">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-head">
+          <h2 id="hero-title">Since coaching</h2>
+          <label class="picker">
+            <span class="visually-hidden">Benchmark mode</span>
+            <select id="benchmark"></select>
+          </label>
+        </div>
+        <div id="hero-body"></div>
+        <div id="followup" class="followup" hidden></div>
+        <div class="hero-actions">
+          <button id="normal" class="ghost" type="button">Take a normal test</button>
+          <button id="bench30" class="ghost" type="button">30 s benchmark</button>
+          <button id="reset" class="text-button" type="button">New comparison period</button>
+        </div>
+        <div id="reset-confirm" class="confirm" hidden>
+          <p>Your next drill freezes a new baseline from your latest tests in each mode. Earlier sessions stay in your history.</p>
+          <div class="row">
+            <button id="reset-yes" class="ghost" type="button">Start a new period</button>
+            <button id="reset-no" class="text-button" type="button">Keep the current one</button>
+          </div>
+        </div>
+      </section>
 
-    <section class="trend" aria-labelledby="trend-title">
-      <h2 id="trend-title">Progress</h2>
-      <div class="trend-box" hidden>
-        <div id="trend-plot" class="trend-plot" tabindex="0" role="img"></div>
-        <div id="trend-tip" class="tip chart-tip" aria-hidden="true" hidden></div>
-      </div>
-      <ul id="trend-legend" class="trend-legend" hidden>
-        <li><i class="key-line overall"></i>Overall wpm</li>
-        <li><i class="key-line weak"></i><span id="trend-weak">Weak keys</span></li>
-        <li><svg class="hollow" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" /></svg>Practice test</li>
-      </ul>
-      <p id="trend-empty" class="empty">Your progress shows up after two tests.</p>
-    </section>
+      <section class="session" aria-labelledby="session-title">
+        <div class="section-head">
+          <h2 id="session-title">Next session</h2>
+          <span id="session-meta" class="quiet"></span>
+        </div>
+        <div id="session-body"></div>
+        <div class="switches">
+          <label class="switch">
+            <input id="warmup" type="checkbox" />
+            <span class="track" aria-hidden="true"></span>
+            <span>Warm-up round</span>
+          </label>
+          <label class="switch">
+            <input id="hints" type="checkbox" />
+            <span class="track" aria-hidden="true"></span>
+            <span>Fingering hints</span>
+          </label>
+        </div>
+      </section>
 
-    <section class="spots" aria-labelledby="spots-title">
-      <div class="spots-head">
-        <h2 id="spots-title">Weak spots</h2>
+      <section class="keyboard" aria-labelledby="keys-title">
+        <div class="section-head">
+          <h2 id="keys-title">Where time goes</h2>
+          <span class="quiet">ordinary tests</span>
+        </div>
+        <div id="keys" class="keys" role="group" aria-label="Keyboard: time lost per key"></div>
+        <div class="legend" aria-hidden="true">
+          <span>On par</span>
+          <span class="ramp"></span>
+          <span>Costs time</span>
+          <span class="learning-key">Learning</span>
+        </div>
+        <div id="tip" class="tip" aria-hidden="true" hidden></div>
+      </section>
+
+      <section class="trend" aria-labelledby="trend-title">
+        <h2 id="trend-title">Progress</h2>
+        <div class="trend-box" hidden>
+          <div id="trend-plot" class="trend-plot" tabindex="0" role="img"></div>
+          <div id="trend-tip" class="tip chart-tip" aria-hidden="true" hidden></div>
+        </div>
+        <ul id="trend-legend" class="trend-legend" hidden>
+          <li><i class="key-line overall"></i>wpm</li>
+          <li><i class="key-line weak"></i><span id="trend-weak">Speed on targets</span></li>
+          <li><svg class="dot-key" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" /></svg>Ordinary test</li>
+          <li><svg class="hollow" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" /></svg>Practice round</li>
+        </ul>
+        <p id="trend-empty" class="empty">Your progress shows up after two tests.</p>
+      </section>
+
+      <section class="spots" aria-labelledby="spots-title">
+        <div class="spots-head">
+          <h2 id="spots-title">Weak spots</h2>
+        </div>
         <div id="tabs" class="segmented" role="tablist" aria-label="Kind of weak spot" data-tab="0">
           <span class="thumb" aria-hidden="true"></span>
-          <button role="tab" id="tab-keys" aria-selected="true" data-kind="keys">Letters</button>
-          <button role="tab" id="tab-bigrams" aria-selected="false" tabindex="-1" data-kind="bigrams">Bigrams</button>
-          <button role="tab" id="tab-words" aria-selected="false" tabindex="-1" data-kind="words">Words</button>
+          <button role="tab" id="tab-letters" aria-selected="true" aria-controls="table" data-kind="letters">Letters</button>
+          <button role="tab" id="tab-sequences" aria-selected="false" aria-controls="table" tabindex="-1" data-kind="sequences">Sequences</button>
+          <button role="tab" id="tab-words" aria-selected="false" aria-controls="table" tabindex="-1" data-kind="words">Words</button>
+          <button role="tab" id="tab-boundaries" aria-selected="false" aria-controls="table" tabindex="-1" data-kind="boundaries">Boundaries</button>
         </div>
-      </div>
-      <table id="table" aria-labelledby="spots-title">
-        <thead>
-          <tr><th id="item-head" scope="col">Letter</th><th scope="col">wpm</th><th scope="col">Errors</th><th scope="col">Attempts</th></tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <p id="empty" class="empty" hidden>Finish a Monkeytype test to see your weak spots.</p>
-    </section>
+        <table id="table" role="tabpanel" aria-labelledby="spots-title">
+          <thead>
+            <tr><th id="item-head" scope="col">Letter</th><th scope="col">ms</th><th scope="col">Missed</th><th scope="col">Tries</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div id="explain" class="explain"></div>
+        <p id="empty" class="empty" hidden>Finish an ordinary Monkeytype test to see your weak spots.</p>
+      </section>
 
-    <footer>
-      <button id="practice" class="primary" type="button" disabled>Practice my weak spots</button>
-      <p id="practice-status" class="quiet" aria-live="polite"></p>
-      <p class="hint">Or press <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd> in either window</p>
-      <p id="practice-note" class="quiet"></p>
+      <section class="transfer" aria-labelledby="transfer-title" hidden>
+        <div class="section-head">
+          <h2 id="transfer-title">Trained skills in ordinary tests</h2>
+          <span class="quiet">before → since coaching</span>
+        </div>
+        <ul id="transfer"></ul>
+      </section>
+    </div>
+
+    <footer class="bottom">
+      <div class="actions">
+        <button id="primary" class="primary" type="button" disabled>Start session</button>
+        <button id="quick" class="secondary" type="button" disabled>Practice my weak spots</button>
+      </div>
+      <p id="status" class="status" aria-live="polite"></p>
+      <p class="hint"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd> practices from anywhere. <kbd>Esc</kbd> closes.</p>
     </footer>
-  </main>
+  </aside>
   <script src="coach.js"></script>
 </body>
 </html>

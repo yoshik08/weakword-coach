@@ -276,3 +276,45 @@ If the user changes `quickRestart` to `tab|esc|enter`, those keys restart direct
 - Playwright `page.locator(...)getByRole('button',{name:'words'})` did **not** match config buttons (accessible name came out empty with the icon); use CSS + text instead.
 - Headless Chromium + Cloudflare: not challenged in testing on 2026-11-24; ads/trackers were blocked at the route level.
 - `restartIfNotStarted` on `window` focus/visibility means that alt-tabbing to the app before typing regenerates words (words/time modes).
+
+---
+
+## 10. What the app adds to the page, and the markup it relies on (inspected 2026-11-24)
+
+Verified live with an off-screen Electron window, plus source at master (`Nav.tsx`, `TestResult.tsx`, `ResultMainStats.tsx`, `ResultSecondaryStats.tsx`, `Keytips.tsx`, `merch-banner.tsx`, `integrations/ads/*`).
+
+### CSP
+
+`content-security-policy: frame-ancestors 'none'` and `x-frame-options: DENY` only. No `style-src`/`script-src` limits, so a `<style>` injected by the preload applies. The page cannot be framed (the app loads it top-level).
+
+### Header: the Coach button
+
+- `header nav` holds text-variant buttons; the bell is `button[data-nav-item="alerts"]` with `<i class="fa-bell fas fa-fw">`. After it Solid renders the login button or the account menu (inside an `AnimePresence`).
+- The app inserts `button#wwc-coach[data-nav-item="weakword-coach"]` right after the bell and copies the bell's `className` (which also carries the focus-mode fade, `opacity-(--nav-focus-opacity)`). A MutationObserver keeps it there when Solid re-renders the nav.
+
+### Result screen: the Coach row
+
+- `ResultMainStats` renders a static grid (`grid items-center ... md:grid-cols-1`) with exactly two `[data-ui-element="resultStat"]` children: wpm, then acc. The first resultStat's parent is that grid. The app appends `div#wwc-row` to it (`grid-column: 1 / -1`, `width: 16rem`), so the row sits directly under acc in the left column. Solid does not reconcile static template children, so the extra node survives until `#result` unmounts.
+- If that grid is ever missing, the row renders as a fixed card (`#wwc-row.wwc-floating`) instead.
+- "test type" cell lines (`innerText` split on newlines): `[mode+mode2 | "quote <group>" | "custom", language display ("english 1k"), "punctuation", "numbers", "blind", "lazy", funbox names joined ", ", "expert"|"master", "stop on <x>", "delete on <x>"]`. Custom has no language line.
+- "other" cell (only when non-empty): `failed (<reason>)`, `afk detected`, `invalid` / `invalid (wpm,raw,accuracy)`, `repeated`, `bailed out`, `too short`. A "repeat test" run shows `invalid` and `repeated`. It can render a moment after `#result`, so the preload re-reads it 250 ms later.
+- Focus: on mount Monkeytype focuses a `tabindex="-1"` div (`#resultScreenshotTarget > div[tabindex="-1"]`) so Tab reaches "next test". The app returns focus there after the Coach panel closes on a result.
+
+### Ads
+
+- Slots: `.ad.advertisement` wrappers (`#ad-result-wrapper` 728x90, `#ad-result-small-wrapper` 320x50; account/settings/about/footer/vertical slots exist for `ads: on|sellout`). The result slots sit in one plain parent `#result > div.full-width.mt-4` (90 px + 1 rem margin). With the ad script blocked, Monkeytype shows its "Using an ad blocker?" placeholder in that slot.
+- Loader: Playwire RAMP from `//cdn.intergient.com/1024888/74058/ramp.js` (`window.ramp`). Requests seen without blocking: cdn.intergient.com, config.playwire.com, securepubads.g.doubleclick.net, pagead2.googlesyndication.com, fundingchoicesmessages.google.com, consentmanager.net, ccgateway.net, amazon-adsystem.com, openx, criteo, id5-sync, eyeota, crwdcntrl (Lotame), tapad, agkn, taboola, smartadserver, rubiconproject, hadronid, fastclick, durationmedia, creativecdn, fixedfold. With `cdn.intergient.com` blocked, nothing else on that list loads.
+- Monkeytype's own `ads` setting (`off|result|on|sellout`) would hide the slots too, but it is an account setting; the app leaves it alone.
+- Merch banner (`elements/merch-banner.tsx`): a `Banners` overlay item linking to `https://mktp.co/merch` with a `button` containing `.fa-times`. It sets a global top offset (the page is pushed down by its height), so hiding it with CSS leaves a gap. Its close button stores `localStorage.merchBannerClosed3 = true` (Monkeytype's own dismissal); the app clicks it once per load. Other banners (errors, notices) are left alone.
+
+### Footer key tips
+
+`footer > div.flex-col > div.flex`: `<kbd>tab &gt; enter</kbd><span>- restart test</span>` and `<kbd>escape</kbd>&nbsp;or&nbsp;<kbd>ctrl + shift + p</kbd><span>- command line</span>` (the second `kbd` and the "or" are absent on Firefox). The app blanks the " or " text node, hides the second `kbd`, and adds `div#wwc-keytip` (`ctrl + shift + p - practice weak spots`), because the app takes Ctrl+Shift+P before the page sees it.
+
+### Test page: the session strip
+
+`#typingTest` (content-grid) has static wrapper children (`<div><CapsWarning/></div>`, `<div><TestModesNotice/></div>`, ...). The app prepends `div#wwc-hud` (font size set in rem, because `#typingTest` has an inline font size of `fontSize` rem). It hides with `#typingTest` on the result screen and fades with `html[data-focused]` while typing.
+
+### Focus and visibility
+
+`TestPage` listens to `window` `focus` (`restartIfNotStarted`) and `blur` (unfocused state). When the Coach view takes focus and gives it back, an unstarted words/time test is restarted with new words (custom texts stay the same), and the recorder resets on the fresh word 0.

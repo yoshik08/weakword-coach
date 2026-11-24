@@ -41,6 +41,15 @@ export const SEL = {
   cookiesDialog: 'dialog#CookiesModal[open]',
   /** Any open modal dialog (command line, custom text, cookies ...). */
   openDialog: '#solidmodals dialog[open]',
+  /** Header nav: the notification bell; the Coach button goes right after it. */
+  navBell: 'header nav [data-nav-item="alerts"]',
+  /** The result screen's focus anchor: Tab from it reaches "next test". */
+  resultPrefocus: '#resultScreenshotTarget > div[tabindex="-1"]',
+  /** Footer key tips (restart test, command line). */
+  footer: 'footer',
+  /** Ad slots: wrappers carry `ad advertisement`; the result's slots sit in one plain parent. */
+  adSlot: '.ad.advertisement',
+  resultAdWrapper: '#ad-result-wrapper',
 } as const;
 
 /** Visible text of buttons and result cells, matched exactly after trim/lowercase. */
@@ -57,4 +66,12 @@ export const LABEL = {
   changeCustomText: 'change',
   /** Custom text dialog mode: words once each, in order. */
   simpleMode: 'simple',
+  /** Result cells that describe the test (lines separated by <br>). */
+  testType: 'test type',
+  other: 'other',
+  /** testConfig toggles. */
+  punctuation: 'punctuation',
+  numbers: 'numbers',
+  /** Footer key tip of the command line ("escape or ctrl + shift + p - command line"). */
+  commandLineTip: '- command line',
 } as const;

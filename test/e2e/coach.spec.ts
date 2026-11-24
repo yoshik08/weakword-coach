@@ -1,63 +1,71 @@
 import { expect, test } from '@playwright/test';
-import { SEL } from '../../src/preload/selectors';
-import { dismissCookies, launchApp, playSlowLetterTest } from './helpers';
+import { compositeShot, launchApp, openCoach, playSlowLetterTest, ready, resultRow } from './helpers';
 
-test('the coach heatmap and table update by themselves and point at the slow letters', async () => {
+test('sparse history: calibration, learning labels, then the heatmap points at the slow letters', async () => {
   test.setTimeout(300_000);
   const { app, monkeytype: page, coach } = await launchApp();
   try {
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator(SEL.words)).toBeAttached({ timeout: 45_000 });
-    await dismissCookies(page);
-
-    // Nothing typed yet: empty state, every key unknown.
-    await expect(coach.locator('#empty')).toBeVisible();
-    await expect(coach.locator('.key[data-state="unknown"]')).toHaveCount(26);
-    await expect(coach.locator('#practice')).toBeDisabled();
-
+    await ready(page);
     const { slow, errorLetter } = await playSlowLetterTest(page);
 
-    // The coach window refreshes on its own: no reload.
-    const eKey = coach.locator('.key[data-key="e"]');
-    await expect(eKey).toHaveAttribute('data-state', 'weak', { timeout: 15_000 });
+    // One test: the row under wpm/acc says how far the baseline is.
+    const row = await resultRow(page);
+    await expect(row).toHaveAttribute('data-kind', 'calibrating');
+    await expect(row).toContainText('Baseline 1/3 complete');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: 'docs/screenshots/04-result-calibrating.png' });
+
+    // The Coach shows calibration and keeps everything "Learning" (one run is not enough evidence).
+    await openCoach(page, coach);
+    await expect(coach.locator('#summary')).toContainText('1 ordinary test');
+    await expect(coach.locator('[data-testid="calibration"]')).toContainText('1/3');
+    await expect(coach.locator('#hero-body')).toContainText('Baseline 1/3 complete');
+    await expect(coach.locator('.key[data-state="learning"]').first()).toBeVisible();
+    expect(await coach.locator('.key[data-state="weak"]').count()).toBe(0);
+    await expect(coach.locator('#rows tr').first()).toHaveAttribute('data-status', 'learning');
+    await expect(coach.locator('#session-body')).toContainText('Still learning');
+    await compositeShot(page, coach, 'docs/screenshots/05-coach-sparse.png');
+    await coach.keyboard.press('Escape');
+
+    // A second run of the same habits: the slow letters are now weak, the others mostly on par.
+    await page.locator('#result [data-ui-element="restartTestButton"]').click();
+    await expect(page.locator('#result')).toHaveCount(0);
+    await playSlowLetterTest(page);
+    await expect(await resultRow(page)).toContainText('Baseline 2/3 complete');
+    await openCoach(page, coach);
+    const e = coach.locator('.key[data-key="e"]');
+    await expect(e).toHaveAttribute('data-state', 'weak', { timeout: 15_000 });
     await expect(coach.locator('.key[data-key="o"]')).toHaveAttribute('data-state', 'weak');
-    await expect(coach.locator('#summary')).toContainText('Based on 1 test');
-    await expect(coach.locator('#empty')).toBeHidden();
-
     const keys = await coach.locator('.key').evaluateAll((els) =>
-      els.map((e) => ({
-        key: e.getAttribute('data-key')!,
-        state: e.getAttribute('data-state')!,
-        confidence: Number(e.getAttribute('data-confidence')),
-        known: e.getAttribute('data-confidence') !== '',
-      })),
+      els.map((k) => ({ key: k.getAttribute('data-key')!, state: k.getAttribute('data-state')!, heat: Number(k.getAttribute('data-heat') || 0) })),
     );
-    const known = keys.filter((k) => k.known).sort((a, b) => a.confidence - b.confidence);
+    const known = keys.filter((k) => k.state === 'weak' || k.state === 'ok').sort((a, b) => b.heat - a.heat);
     expect(known.slice(0, 2).map((k) => k.key).sort()).toEqual(['e', 'o']);
-
-    // Letters table: the slow letters lead.
-    const items = coach.locator('#rows tr[data-item]');
-    await expect(items.first()).toBeVisible();
-    expect([await items.nth(0).getAttribute('data-item'), await items.nth(1).getAttribute('data-item')].sort()).toEqual(['e', 'o']);
-
-    // Most other letters with enough data are strong (the error letter is allowed to be weaker).
     const others = known.filter((k) => !slow.includes(k.key) && k.key !== errorLetter);
-    expect(others.length).toBeGreaterThanOrEqual(3);
-    const strong = others.filter((k) => k.state === 'strong');
-    console.log(`slow ${slow}, error letter ${errorLetter}; strong ${strong.length}/${others.length}: ${others.map((k) => `${k.key}=${k.confidence}`).join(' ')}`);
-    expect(strong.length).toBeGreaterThanOrEqual(Math.ceil(others.length * 0.7));
+    expect(others.filter((k) => k.state === 'ok').length).toBeGreaterThanOrEqual(Math.ceil(others.length * 0.7));
 
-    // Screenshots of the coach window: hover a slow key for the tooltip, then the bigrams tab.
-    await eKey.hover();
+    // Letters table and explanations, then the sequences tab.
+    const first = coach.locator('#rows tr[data-item]').first();
+    expect(['e', 'o']).toContain(await first.getAttribute('data-item'));
+    await expect(coach.locator('#explain')).toContainText(/(e|o) is slow to reach: \d+ ms vs your usual \d+ ms\./);
+    await expect(coach.locator('#session-body .target').first()).toBeVisible();
+    await e.hover();
     await expect(coach.locator('#tip')).toBeVisible();
-    await coach.waitForTimeout(700); // key colour transitions
-    await coach.screenshot({ path: 'docs/screenshots/03-coach-heatmap.png' });
-
-    await coach.locator('[data-kind="bigrams"]').click();
+    await coach.waitForTimeout(600);
+    await compositeShot(page, coach, 'docs/screenshots/06-coach-heatmap.png');
+    await coach.locator('[data-kind="sequences"]').click();
     await expect(coach.locator('#tabs')).toHaveAttribute('data-tab', '1');
-    await coach.mouse.move(0, 0);
-    await coach.waitForTimeout(600); // tab thumb slide
-    await coach.screenshot({ path: 'docs/screenshots/03-coach-bigrams.png' });
+    await expect(coach.locator('#item-head')).toHaveText('Sequence');
+    // Hints on request.
+    await coach.locator('label.switch:has(#hints)').click();
+    await expect(coach.locator('#session-body .fingering').first()).toBeVisible({ timeout: 10_000 });
+    // The warm-up is optional.
+    const firstStep = coach.locator('#session-body .steps li').first();
+    await expect(firstStep).toHaveText('Warm-up');
+    await coach.locator('label.switch:has(#warmup)').click();
+    await expect(firstStep).not.toHaveText('Warm-up', { timeout: 10_000 });
+    await coach.locator('label.switch:has(#warmup)').click();
+    await expect(firstStep).toHaveText('Warm-up', { timeout: 10_000 });
   } finally {
     await app.close();
   }

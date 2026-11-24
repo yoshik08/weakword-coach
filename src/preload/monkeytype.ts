@@ -1,14 +1,19 @@
 // Preload for the Monkeytype window (sandboxed): captures every keystroke of a test and sends the
-// finished test to the main process. It only reads the page, except when the user asks for a
-// practice test: then inject.ts loads the words through Monkeytype's own custom text dialog.
+// finished test, with the result screen's own record of it, to the main process. It also renders what
+// the app adds to the page (ui.ts) and, when asked, drives Monkeytype's own UI to load a practice text
+// or an ordinary test profile (inject.ts). It never writes Monkeytype's storage or calls its API.
 import { ipcRenderer } from 'electron';
-import type { TestResult } from '../shared/types';
-import { injectPractice } from './inject';
+import type { HudView, ResultRecord, ResultRowView, TestResult, TestSettings } from '../shared/types';
+import { injectPractice, loadProfile, readConfig, type ProfileRequest } from './inject';
 import { Recorder } from './recorder';
 import { LABEL, SEL } from './selectors';
+import { dismissPromoBanner, ensureCoachButton, ensureHud, ensureStyle, focusTyping, patchKeytips, removeFloatingRow, renderRow, setBadge, setHud, showToast } from './ui';
 
 const recorder = new Recorder(performance.timeOrigin);
 let resultShown = false;
+/** clientId of the test whose result screen is showing (its Coach row may still be on its way). */
+let shownClientId: string | null = null;
+let pendingRow: ResultRowView | null = null;
 
 function wordText(word: Element): string {
   return Array.from(word.querySelectorAll(SEL.letter))
@@ -21,10 +26,16 @@ function wordIndexOf(word: Element): number {
   return Number(word.getAttribute('data-wordindex'));
 }
 
+const isWordsInput = (t: EventTarget | null): t is HTMLTextAreaElement => t instanceof HTMLTextAreaElement && t.matches(SEL.wordsInput);
+
 function onKeydown(e: KeyboardEvent): void {
-  if (e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
   const box = e.target;
-  if (!(box instanceof HTMLTextAreaElement) || !box.matches(SEL.wordsInput)) return;
+  if (!isWordsInput(box)) return;
+  if (e.isComposing || e.key === 'Process') return recorder.artifact();
+  if (e.ctrlKey || e.altKey || e.metaKey) {
+    if (e.key === 'Backspace' || e.key.toLowerCase() === 'v') recorder.artifact();
+    return;
+  }
   if (document.querySelector(SEL.result) || document.querySelector(SEL.openDialog)) return;
   const active = document.querySelector(SEL.activeWord);
   recorder.keydown({
@@ -32,7 +43,26 @@ function onKeydown(e: KeyboardEvent): void {
     timeStamp: e.timeStamp,
     inputValue: box.value,
     domActiveIndex: active ? wordIndexOf(active) : null,
+    repeat: e.repeat,
+    shift: e.shiftKey,
+    code: e.code,
   });
+}
+
+/** Input that the keydown stream does not show keeps the next key out of timing (the input itself is untouched). */
+function onInput(e: Event): void {
+  if (!isWordsInput(e.target)) return;
+  const type = (e as InputEvent).inputType;
+  if (type && type !== 'insertText' && type !== 'deleteContentBackward') recorder.artifact();
+}
+
+function cellLines(label: string): string[] | null {
+  for (const cell of document.querySelectorAll(SEL.resultStat)) {
+    if (cell.firstElementChild?.textContent?.trim().toLowerCase() !== label) continue;
+    const value = cell.querySelector<HTMLElement>(SEL.resultStatValue);
+    return (value?.innerText ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
+  }
+  return null;
 }
 
 /** Reads a result cell's number by its label; prefers the exact aria-label over the rounded text. */
@@ -55,6 +85,19 @@ function readResult(): TestResult {
   };
 }
 
+function readRecord(): ResultRecord {
+  return { testType: cellLines(LABEL.testType) ?? [], other: cellLines(LABEL.other) ?? [] };
+}
+
+function readSettings(): TestSettings {
+  const c = readConfig();
+  const out: TestSettings = {};
+  if (typeof c.layout === 'string') out.layout = c.layout;
+  if (typeof c.confidenceMode === 'string') out.confidenceMode = c.confidenceMode;
+  if (Array.isArray(c.quoteLength)) out.quoteLength = c.quoteLength.filter((v): v is number => typeof v === 'number');
+  return out;
+}
+
 /** "words 25 english" -> mode "words 25", language "english". */
 function readMode(): { mode: string; language: string | null } {
   const parts = (document.querySelector(SEL.testMode)?.textContent ?? '').trim().split(/\s+/).filter(Boolean);
@@ -63,8 +106,42 @@ function readMode(): { mode: string; language: string | null } {
 }
 
 function sendFinishedTest(): void {
-  const test = recorder.finish({ result: readResult(), ...readMode(), endedAt: Date.now() });
-  if (test) ipcRenderer.send('wwc:test-finished', test);
+  const test = recorder.finish({ result: readResult(), ...readMode(), endedAt: Date.now(), record: readRecord(), settings: readSettings() });
+  if (!test) return;
+  shownClientId = test.clientId ?? null;
+  // The "other" cell (invalid, too short, afk ...) can render a moment after the result.
+  setTimeout(() => {
+    if (document.querySelector(SEL.result)) {
+      const other = cellLines(LABEL.other);
+      if (other) test.record = { testType: test.record?.testType ?? [], other };
+    }
+    ipcRenderer.send('wwc:test-finished', test);
+  }, 250);
+}
+
+function showRow(view: ResultRowView): void {
+  if (view.clientId !== shownClientId || !document.querySelector(SEL.result)) return;
+  renderRow(view, (id) => ipcRenderer.send('wwc:row-action', { id, clientId: view.clientId }));
+}
+
+let uiQueued = false;
+function maintainUi(): void {
+  if (uiQueued) return;
+  uiQueued = true;
+  requestAnimationFrame(() => {
+    uiQueued = false;
+    ensureStyle();
+    ensureCoachButton(() => ipcRenderer.send('wwc:coach-open'));
+    dismissPromoBanner();
+    patchKeytips();
+    ensureHud();
+    removeFloatingRow();
+    if (pendingRow && document.querySelector(SEL.resultStat)) {
+      const row = pendingRow;
+      pendingRow = null;
+      showRow(row);
+    }
+  });
 }
 
 function onMutations(records: MutationRecord[]): void {
@@ -81,10 +158,16 @@ function onMutations(records: MutationRecord[]): void {
   for (const word of added) recorder.wordSeen(wordIndexOf(word), wordText(word));
   const result = document.querySelector(SEL.result);
   if (result && !resultShown) sendFinishedTest();
+  if (!result) shownClientId = null;
   resultShown = result !== null;
+  maintainUi();
 }
 
 window.addEventListener('keydown', onKeydown, { capture: true, passive: true });
+window.addEventListener('input', onInput, { capture: true, passive: true });
+window.addEventListener('compositionstart', () => recorder.artifact(), { capture: true, passive: true });
+window.addEventListener('blur', () => recorder.blurred());
+document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && recorder.blurred());
 new MutationObserver(onMutations).observe(document, { childList: true, subtree: true });
 
 ipcRenderer.on('wwc:inject-practice', async (_event, payload: unknown) => {
@@ -92,3 +175,22 @@ ipcRenderer.on('wwc:inject-practice', async (_event, payload: unknown) => {
   const valid = Array.isArray(words) && words.length > 0 && words.every((w) => typeof w === 'string' && w);
   ipcRenderer.send('wwc:inject-done', valid ? await injectPractice(words) : { ok: false, error: 'No practice words' });
 });
+
+ipcRenderer.on('wwc:load-profile', async (_event, payload: unknown) => {
+  const p = payload as ProfileRequest | null;
+  const valid = p && typeof p.mode === 'string' && typeof p.mode2 === 'string' && typeof p.language === 'string';
+  ipcRenderer.send('wwc:profile-done', valid ? await loadProfile(p) : { ok: false, error: 'No test profile' });
+});
+
+ipcRenderer.on('wwc:result-row', (_event, view: ResultRowView) => {
+  if (document.querySelector(SEL.resultStat)) showRow(view);
+  else pendingRow = view;
+});
+
+ipcRenderer.on('wwc:hud', (_event, view: HudView | null) => {
+  setHud(view, (id) => ipcRenderer.send('wwc:hud-action', { id }));
+});
+
+ipcRenderer.on('wwc:coach-badge', (_event, b: { dot: boolean; label: string }) => setBadge(b));
+ipcRenderer.on('wwc:toast', (_event, text: unknown) => typeof text === 'string' && showToast(text));
+ipcRenderer.on('wwc:focus-typing', () => focusTyping());

@@ -1,125 +1,98 @@
 # Weakword Coach
 
-Weakword Coach is a Windows Electron app that wraps the real [monkeytype.com](https://monkeytype.com), so standard tests behave exactly as on the site and sync to your account as usual. On top of that it adds keybr-style adaptive training. It captures per-keystroke data from your Monkeytype tests, finds your slowest and most error-prone letters, bigrams and words, and loads practice tests that target them into Monkeytype's Custom mode.
+Weakword Coach is a Windows Electron app that wraps the real [monkeytype.com](https://monkeytype.com). Standard tests behave exactly as on the site and sync to your account as usual. On top of that it adds a coach. The coach learns what slows you down from your ordinary tests, trains it in short practice sessions that run in Monkeytype itself, and shows on every ordinary result whether your actual wpm has moved since coaching began.
 
-The app opens two windows: Monkeytype itself, and a narrow Coach window beside it with a keyboard heatmap, a progress chart and a table of weak spots.
+Everything lives in one window. The Coach opens from a button next to Monkeytype's notification bell, and its progress row sits right under the result's wpm and accuracy. Ads are removed.
 
 <p align="center">
-  <img src="docs/screenshots/05-coach-trend.png" width="320" alt="Coach panel with keyboard heatmap, progress chart and weak spots table">
+  <img src="docs/screenshots/12-coach-after-session.png" width="720" alt="The Coach panel open over Monkeytype after a session, showing +35 wpm since coaching">
 </p>
-
-The Coach panel after three standard tests and one practice run. Red keys are the slowest or most error-prone relative to your target speed. The chart plots Monkeytype's wpm (blue) against your speed on the current weak keys (orange); hollow circles are practice tests.
 
 ## What it looks like
 
-The screenshots below are produced by the automated E2E suite, so they come from guest sessions with scripted typing. The numbers (and the very even speeds) are not realistic.
+The screenshots are produced by the automated E2E suite: guest sessions, scripted typing and, where noted, fixture history in a throwaway profile. The numbers are not realistic.
 
-**1. Launch.** Monkeytype loads as it does in a browser; the app does not change the page.
+| | |
+|---|---|
+| <img src="docs/screenshots/11-result-compare.png" alt="A normal result with the Coach row under wpm and acc: +35 wpm, +2.0 pp vs pre-Coach"> | <img src="docs/screenshots/15-row-tradeoff.png" alt="A result where speed rose and accuracy fell: +38 wpm, -8.6 pp"> |
+| The row after a session's retest: signed deltas against the frozen pre-Coach baseline, the baseline itself and how many runs this is. | Speed up, accuracy down: both deltas are shown, with the trade-off spelled out. |
+| <img src="docs/screenshots/10-session-step.png" alt="A practice round loaded in Monkeytype's custom mode with the session strip above the words"> | <img src="docs/screenshots/17-row-mismatch.png" alt="A result in a mode that has no baseline, offering to start one"> |
+| A session step: the strip above the words says what to do and fades while you type. | A mode with no tests from before coaching gets its own baseline instead of an unfair comparison. |
 
-<img src="docs/screenshots/01-launch-monkeytype.png" width="640" alt="Monkeytype just after launch in the app">
+More: [empty Coach](docs/screenshots/02-coach-empty.png), [sparse history](docs/screenshots/05-coach-sparse.png), [heatmap](docs/screenshots/06-coach-heatmap.png), [practice round result](docs/screenshots/08-drill-result.png), [negative delta](docs/screenshots/16-row-negative.png), [next-day follow-up](docs/screenshots/13-result-followup.png).
 
-**2. Take a normal test.** Mid-test, and the result screen that ends it. The result screen appearing is the moment the test is saved locally.
+## Using it
 
-<table>
-  <tr>
-    <td><img src="docs/screenshots/02-mid-test.png" alt="A words 25 test in progress"></td>
-    <td><img src="docs/screenshots/02-result.png" alt="The result screen of a words 25 test"></td>
-  </tr>
-  <tr>
-    <td>Mid-test (13 of 25 words).</td>
-    <td>Result screen: wpm, accuracy, raw, consistency are read from it.</td>
-  </tr>
-</table>
+1. Open Weakword Coach and take ordinary Monkeytype tests (time, words or quote) the way you always do.
+2. Each result shows a Coach row under wpm and acc. Before you practice it reads "Baseline 1/3 complete", then 2/3, then "Baseline ready": your baseline is the median of your last 3 tests in that mode.
+3. Click the Coach button (three climbing keycaps, right of the bell). Under "Next session" it lists 1 to 3 targets with the reason for each, for example "You miss p often: 27% of first tries (usually 3%)". Click **Start session · about 6 min**.
+4. Type each practice round; its result says how the targets went. Press **Next: …** in the row (or Ctrl+Shift+P) for the next round. The last step is a normal retest in your usual mode.
+5. The retest's row compares it with the baseline frozen at your first drill, for example `+5 wpm vs pre-Coach · +0.6 pp`. Every later ordinary test in that mode shows the same row, and after 3 runs it shows their median.
+6. A day later the Coach button gets a dot ("follow-up test due"). One ordinary test then shows whether the change held.
 
-**3. See your weak spots.** The Coach window updates by itself when a test finishes. Hover or focus a key for its wpm, error rate and attempts; switch the table between Letters, Bigrams and Words.
+**Practice my weak spots** in the panel (or Ctrl+Shift+P anywhere) runs a single one-minute round instead of a session. **Review missed words** on a result practices that test's missed and stalled words.
 
-<table>
-  <tr>
-    <td><img src="docs/screenshots/03-coach-heatmap.png" width="300" alt="Coach heatmap with a tooltip on the e key and the letters table"></td>
-    <td><img src="docs/screenshots/03-coach-bigrams.png" width="300" alt="Coach with the Bigrams tab selected"></td>
-  </tr>
-  <tr>
-    <td>Heatmap and Letters table, tooltip on <code>e</code>.</td>
-    <td>Bigrams tab: letter pairs within a word, weakest first.</td>
-  </tr>
-</table>
-
-**4. Practice.** "Practice my weak spots" (or Ctrl+Shift+P) builds a 30-word list around those spots and loads it into Monkeytype's Custom mode. Typing it is an ordinary Monkeytype test.
-
-<table>
-  <tr>
-    <td><img src="docs/screenshots/04-practice-loaded.png" alt="Monkeytype in custom mode with the practice words loaded"></td>
-    <td><img src="docs/screenshots/04-practice-running.png" alt="The practice test in progress, 13 of 30 words"></td>
-  </tr>
-  <tr>
-    <td>Practice loaded: custom mode, 30 words, every word contains a focus letter or bigram.</td>
-    <td>Mid-way through the practice test.</td>
-  </tr>
-</table>
-
-**5. Results.** The practice test is recognised and stored separately, so it does not skew your standard stats. The Coach shows it as a hollow point on the chart and counts the session.
-
-<table>
-  <tr>
-    <td><img src="docs/screenshots/04-coach-after-practice.png" width="300" alt="Coach after a practice run, with a practice session counted"></td>
-    <td><img src="docs/screenshots/05-monkeytype-result.png" alt="Monkeytype result screen of the practice test, test type custom"></td>
-  </tr>
-  <tr>
-    <td>Coach after the practice test ("Practice: 1 session").</td>
-    <td>Monkeytype's result screen for the practice test.</td>
-  </tr>
-</table>
+Ctrl+Shift+P belongs to the Coach inside the app. Monkeytype's command line stays on Esc, and the footer key tips say so.
 
 ## How it works
 
-### Capture
+### Capture (`src/preload/`)
 
-The Monkeytype window has a sandboxed preload (`src/preload/monkeytype.ts`) that only observes the page while you take tests.
+The Monkeytype window has a sandboxed preload that observes the page and never writes Monkeytype's storage or calls its API.
 
-- A capture-phase `keydown` listener on `window` sees every key typed into Monkeytype's `#wordsInput`. A key counts only if no modifier is held (other than Shift), no modal dialog is open and the result screen is not showing.
-- A `MutationObserver` records each word's target text from the DOM when it appears (Monkeytype removes old words as you scroll) and notices when the result screen (`#result`) is mounted.
-- The "expected" character for each key comes from those recorded words plus the recorder's own word counter (`src/preload/recorder.ts`). The DOM's active word can lag a word behind at fast typing, so the recorder follows the keys it sees and re-syncs to the DOM only after 50 ms of quiet. Backspace is tracked, including stepping back into a word that was committed wrong.
-- Each stored keystroke has: time since the first key, the key, the expected character (or null), whether it was correct, and the word index.
-- When the result screen appears, the finished test (words, keystrokes, mode, language, and wpm / raw / accuracy / consistency read from the result screen) is sent to the main process and stored in SQLite (`src/main/db.ts`). A test abandoned with a restart, or one with no keystrokes, is never stored. Word 0 appearing means a fresh wordset, which discards the old attempt.
+- A capture-phase `keydown` listener records each key typed into `#wordsInput`: the key, the expected character, the caret position, the word index and a monotonic `timeStamp`. Flags mark keys whose timing is not clean: auto-repeat, the first key after the window lost focus, and the first key after input the keydown stream cannot see (paste, IME composition, Ctrl+Backspace). Nothing is blocked; Monkeytype's own result stays the official one.
+- When `#result` mounts, the preload reads the result screen's official record: wpm, raw, accuracy and consistency (exact values from `aria-label`), the "test type" lines (mode, language, punctuation, numbers, blind, lazy, funbox, difficulty, stop/delete on error) and the "other" lines (invalid, too short, repeated, afk, bailed out). It also reads a few scoring settings from Monkeytype's saved config, read-only. Letter `KeyboardEvent.code`s fingerprint the physical layout (QWERTY, Dvorak, Colemak, AZERTY, QWERTZ, Workman).
+- Every attempt carries a random id, so storing a test is idempotent: a re-mounted result or a re-sent message cannot store it twice, and a restarted test is never stored.
 
-### Analysis
+### Classification and eligibility
 
-`src/shared/analysis.ts` is pure and unit-tested. It uses the newest 50 tests of a source (standard or practice) and only a-z letters.
+- **normal**: time, words or quote from Monkeytype's own untargeted generator. **drill**: a custom text whose words exactly match a Coach prompt. **custom** and **zen** are stored but never used.
+- Only eligible normal tests feed baselines, comparisons and the diagnosis. Monkeytype's own disqualifications (invalid, too short, repeated, afk, bailed out, failed) and an exact replay of the previous test's words make a test ineligible. Drills are never eligible.
+- A **profile** keys comparisons: mode and length (quotes by length group), language, punctuation, numbers, scoring and assist modifiers, emulated layout, and physical layout. The word list's hash (corpus version) is stored per test; a changed list asks for a new baseline.
 
-- Timed samples: a keystroke yields a speed sample only when it and the previous keystroke were both correct and the gap is greater than 0 and at most `PAUSE_MS` (2000 ms). Longer gaps are treated as pauses, not speed.
-- Per letter: attempts, errors, and the median ms per char over its timed samples.
-- Per bigram: two consecutive correct letters in the same word, counted against the second key. An error is a wrong second key; the sample is the gap between the two correct keys.
-- Per word (3+ letters): ms per char from the key before the word (normally the previous Space) to its last key, skipped as a sample if any gap in the word exceeds `PAUSE_MS`. Error rate is errors divided by letters typed.
-- Target speed: the median wpm of your newest 10 standard tests, rounded and clamped to 20..250 (40 if there are none). `targetMs = 12000 / targetWpm`.
-- Per item: `weakness = (msPerChar / targetMs) * (1 + 4 * errorRate)` and `confidence = 1 / weakness`. An item with no timed samples is treated as `2 * targetMs`. Items are ranked by weakness, and confidence below 1 means "below target". The heatmap colour comes from confidence.
-- Minimum attempts before an item is listed: 10 for letters, 6 for bigrams, 2 for words.
+### Diagnosis (`src/shared/keystats.ts`, `diagnose.ts`)
 
-### Practice generator
+- Per test, derived statistics (versioned, stored with the test, recomputed when the version changes) count **first attempts** only. A miss fixed with Backspace stays a miss. Timing uses press-to-press gaps between two correct first attempts with nothing in between: no pause over 2 s, and no repeat, blur or IME flag next to it.
+- Patterns: letters, in-word bigrams and trigrams, words (error rate per occurrence, ms per letter, stalls), and boundaries: space, word starts, capitals (Shift), numbers and punctuation.
+- The newest 30 eligible tests of the same **language and layout** are weighted toward recent runs (10-test half-life). Robust weighted medians give the timing. Sparse error rates and timings are smoothed toward your own baseline.
+- **Impact** = how often the pattern occurs in the active corpus (Monkeytype draws uniformly from the language list) × the time it costs versus your baseline (slowness + excess first-attempt errors × 3.5 keystrokes) × reliability. A fast key missed 27% of the time therefore outranks a rare slow key; there is a unit test for exactly that.
+- A pattern is **Learning** until it has 15 first attempts across 2 runs. Explanations are plain: "You miss p often", "th is slower than your other common pairs: 142 ms vs 108 ms".
 
-`src/shared/generator.ts` is pure and deterministic for a given seed (the app picks a random seed each time).
+### Sessions (`src/shared/planner.ts`, `generator.ts`, `practice-model.ts`)
 
-- Focus: up to 4 letters with confidence below 1 (the 2 weakest if fewer than 2 are below), up to 4 weak bigrams, and up to 3 weak words that contain a focus letter or bigram. With no data it refuses: "Not enough data yet: finish a few Monkeytype tests first."
-- Candidates come from Monkeytype's English 5k list (lowercase a-z, 2-10 letters). Every candidate contains a focus letter or bigram, so every practice word exercises at least one weak spot.
-- Weighting: a word's score is the sum of the weakness of the focus letters it contains plus 1.5 times the weakness of the focus bigrams it contains, divided by `1 + rank / 1000` (so common words are favoured). No word is drawn more than twice unless the pool is too small.
-- Composition: first one word for any focus item the focus words do not already cover, then the focus words, then a "common word" share of 25% drawn from the 200 most common English words that contain a focus item, then weighted candidates up to the default length of 30 words.
-- The list is shuffled with a seeded PRNG (mulberry32) and identical neighbours are separated.
+- A default session is 5 to 7 minutes: warm-up (optional, switch in the panel), two slow clean accuracy rounds, three short speed bursts, a mixed round, then a normal retest in your benchmark mode. When your pace fades late in runs, the mixed part becomes two progressively longer runs.
+- Targets are 1 to 3 high-impact patterns. A recovering pattern (its cost dropped below half of what it was) comes back on later days (1, 3, 7, 14 days).
+- Prompts come from Monkeytype's GPL-3.0 word lists, downloaded on first use and cached, never bundled. Common real words come first, then varied placement (start, middle, end) and length, mixed with ordinary words. Each word appears at most twice per round, with wider lists as a fallback. Mixed rounds use fresh words, in sentences for punctuation profiles. Generation is seeded, so prompts are reproducible and stored with their ids.
+- Pace prompts start from your own clean pace. Accuracy rounds ask for 85% of it at a 97% first-attempt floor. Two clean rounds raise the speed prompt 5%; a rough round lowers it.
+- Drills run through Monkeytype's own custom-text dialog, then a page reload (see `docs/monkeytype-dom.md`, stale wordset). The retest switches mode, length, punctuation and numbers through the config bar, like a user would.
 
-### Injection
+### Measured progress (`src/shared/progress.ts`)
 
-The Monkeytype preload loads the words by driving Monkeytype's own UI the way a user would (`src/preload/inject.ts`): leave the result screen (or abandon a running test) with Monkeytype's restart button, wait for the config bar to be usable, click "change" in the test config bar, pick the "simple" mode (words once each, in order), put the words in the custom text box, fire an `input` event, and click "ok". Then the main process reloads the page.
+- **Before.** For each profile, the median wpm and median accuracy of the 3 most recent eligible tests before the first drill of the comparison period, frozen at that drill. Earlier history is reused. A profile with fewer than 3 shows its sample count; one with none gets its own baseline on request ("Start a baseline for this mode", labelled with its date, never "pre-Coach").
+- **After.** One run shows as one run. From 3 runs on, the row shows the median of the latest 3 and how many runs there have been since coaching began. Signed deltas show regressions too, and a speed gain with lower accuracy is called out.
+- **Follow-up.** A session's retest schedules a follow-up 24 hours later; the next ordinary test in that mode after it shows the change against the retest.
+- **Transfer by skill.** Trained patterns are compared on ordinary tests from before and since coaching began, for example "th 142 → 118 ms", and say "Learning" until both sides have enough evidence.
+- The wording describes measured change since coaching began; it never claims the app caused it.
+- "New comparison period" in the panel starts over: baselines are taken again at the period's first drill.
 
-The reload is deliberate. Monkeytype has a stale-wordset behaviour: a custom text longer than the first custom wordset generated in the page session shows only that many words and then repeats them. A reload keeps the custom text and shows all of it (details in `docs/monkeytype-dom.md`).
+### Ads
 
-### Practice tagging
+The Monkeytype session blocks Playwire RAMP (`cdn.intergient.com`), which loads Monkeytype's ads, plus Google's ad hosts, the ad-blocker message, and the header-bidding and ID-sync hosts seen on the site (`src/main/adblock.ts`). CSS collapses the ad slots and the space they took. The merch-store banner is dismissed with its own close button, which Monkeytype remembers, because hiding it would leave the gap it pushes the page down by.
 
-The list is stored in `practice_sessions` once it has been loaded. When a custom-mode test ends and its words exactly equal one of the last 50 stored practice sessions, it is stored with `source = 'practice'` and linked to that session. Everything else is `source = 'standard'`. The heatmap, tables and the practice generator use standard tests only; practice tests are analysed separately and appear on the progress chart.
+### Storage (`src/main/db.ts`)
+
+SQLite in the app's profile (`%APPDATA%\weakword-coach\weakword.db`), schema version 2 (`PRAGMA user_version`). Version 1 databases from 0.1.x are migrated in place on first launch: kinds, eligibility and profiles are backfilled, old practice lists become prompts, and old tests adopt the first layout the app fingerprints. Tables: tests (with derived stats, profile, record, prompt and session ids), keystrokes, words, prompts, sessions (plan, step, results, follow-up), periods, baselines (frozen membership), pattern_state (practice model) and meta.
+
+### Tuning
+
+Every weight, threshold and practice default is in `src/shared/tuning.ts`: pause cut-off, minimum evidence, smoothing, error cost, weak-pattern margins, accuracy floor, pace steps, step durations, filler shares, review intervals, baseline size and follow-up delay.
 
 ## What it never does
 
-- It does not modify Monkeytype's source, call Monkeytype's API, read or store auth tokens, or post or alter your results. It only observes the DOM and clicks buttons like a user.
-- Your data stays on your machine. Tests and keystrokes live in a SQLite file at `%APPDATA%\weakword-coach\weakword.db` (Electron's `userData` folder; the same for `npm start` and the installed app). Monkeytype's login session is stored alongside it.
-- The one extra network request is the download of Monkeytype's English word lists (`english.json` and `english_5k.json`) from its GitHub repository on your first practice. They are cached in a `wordlists` folder next to the database. They are GPL-3.0 data, so they are not bundled with the app.
-- Logging in to Monkeytype is done on monkeytype.com itself (Google and GitHub sign-in popups are allowed). Your login lives in the app's own persistent browser session and is not shared with your regular browser.
+- It does not modify Monkeytype's code, write its storage, call its API, read auth tokens, or post or alter results. It observes the DOM and clicks buttons like a user.
+- No AI service and no telemetry. Everything runs offline except Monkeytype itself and the one-time word-list download.
+- Drill scores never enter your baseline, comparisons or best scores. Monkeytype itself never ranks custom texts either.
+- Fixture data from the test suite only ever goes into throwaway profiles.
 
 ## Setup
 
@@ -129,34 +102,25 @@ Requirements: Windows, and Node.js 22.12 or newer (Electron 45's tooling needs i
 npm install
 ```
 
-`package.json` already has `allowScripts` approvals for `electron` and `esbuild`, so their install scripts run under npm's script allow-list.
-
 ## Run
 
 ```
 npm start
 ```
 
-This builds with esbuild and launches Electron. If your shell exports `ELECTRON_RUN_AS_NODE` (VS Code's integrated terminal does), unset it first, or Electron will start as plain Node.
-
-## Usage
-
-1. Open the app. Two windows appear: Monkeytype and the Coach.
-2. Log in to Monkeytype if you want your results saved to your account. This is optional; practice and the Coach work as a guest too.
-3. Take normal tests. The Coach panel updates when each one finishes. It needs a few tests before letters, bigrams and words show up.
-4. Press "Practice my weak spots" in the Coach, or press Ctrl+Shift+P in either window. The practice test loads into Monkeytype's Custom mode.
-
-Ctrl+Shift+P shadows Monkeytype's own command-line shortcut inside the app. Esc still opens the command line. Starting a practice run abandons a test that is in progress.
+This builds with esbuild and launches Electron with your real profile. If your shell exports `ELECTRON_RUN_AS_NODE` (VS Code's integrated terminal does), unset it first, or Electron will start as plain Node.
 
 ## Test
 
 ```
 npm run typecheck
-npm test            # vitest unit tests: analysis, generator, recorder, db, practice
-npm run test:e2e    # builds, then runs the Playwright (_electron) specs against the real site
+npm test            # vitest: keystats, diagnosis, generator, planner, practice model, progress, profiles, db + migration, coach service
+npm run test:e2e    # builds, then runs the Playwright (_electron) specs against the live site
 ```
 
-The E2E suite needs internet access (it uses the live monkeytype.com as a guest) and takes several minutes. It launches the app with `WWC_TEST=1`, which shows windows without taking focus, and `WWC_USER_DATA=<temp dir>`, a throwaway profile, so it does not touch your real data or login. It also regenerates the screenshots in `docs/screenshots/`.
+Run vitest from PowerShell or cmd: it fails from Git Bash's lowercase `c:\` working directory.
+
+The E2E suite needs internet (live monkeytype.com, as a guest) and takes about 9 minutes. It launches the app with `WWC_TEST=1`. In that mode windows render off-screen without a taskbar entry or focus (`WWC_TEST_VISIBLE=1` shows them), and `WWC_USER_DATA` points to a throwaway profile, so tests never touch your data or login. Test-only knobs: `WWC_TUNING` (JSON override of the tuning) and `WWC_CLOCK_OFFSET_MS` (to reach a next-day follow-up). The suite regenerates `docs/screenshots/`.
 
 ## Build
 
@@ -165,61 +129,48 @@ npm run dist           # NSIS installer in release/
 npm run test:packaged  # runs the packaged-app E2E spec against release/win-unpacked
 ```
 
-`test:packaged` needs `npm run dist` first. The installer is not code-signed, so Windows SmartScreen will warn when you run it.
+The installer is not code-signed, so Windows SmartScreen will warn when you run it.
 
 ## When Monkeytype changes its markup
 
-Monkeytype is a moving target. Symptoms:
+Symptoms: no Coach row on results, no Coach button, or a practice round failing with a message naming a step ("the custom text dialog did not open").
 
-- The Coach stops updating after tests, or shows odd numbers (capture is not seeing the page).
-- "Practice my weak spots" fails with a message naming a step, such as "Monkeytype: the custom text dialog did not open" or "the test settings stayed disabled".
-
-How to fix it:
-
-1. Every selector and button label the app and its tests use lives in `src/preload/selectors.ts` (`SEL` for selectors, `LABEL` for visible text). Fix them there only; don't select on Tailwind classes.
-2. `docs/monkeytype-dom.md` describes the markup the app was verified against (inspected 2026-11-24), including the test lifecycle (idle, start, end, restart) and the custom text flow. Update it as you learn.
-3. Inspect the live markup in the Monkeytype window with DevTools. The app keeps Electron's default menu (hidden; press Alt), which should include View, Toggle Developer Tools (Ctrl+Shift+I). If that is not available in your build, inspect monkeytype.com in Chrome; the markup is the same.
-4. Re-run the specs that exercise the selectors: `test/e2e/capture.spec.ts` covers capture and the result screen (words, `#wordsInput`, result stats, test mode), and `test/e2e/practice.spec.ts` covers the custom text dialog and the reload. For example:
-
-```
-npx playwright test test/e2e/capture.spec.ts test/e2e/practice.spec.ts
-```
-
-(The `npm run test:e2e` script builds first; if you run `npx playwright test` directly, run `npm run build` first.)
+1. Selectors and labels live in `src/preload/selectors.ts`. Don't select on Tailwind classes.
+2. `docs/monkeytype-dom.md` records the markup the app was verified against, including what the app adds to the page.
+3. If the result screen changes shape, the row falls back to a card of its own beside the result instead of disappearing.
+4. Re-run `test/e2e/launch.spec.ts` (header, ads, panel), `capture.spec.ts` (capture, record) and `practice.spec.ts` (custom text flow).
 
 ## Known limitations
 
-- The heatmap shows the QWERTY letters a-z only. Digits, punctuation and other layouts are not analysed (keys outside a-z are ignored).
-- Practice lists are English only, built from Monkeytype's English word lists. Analysis does not filter by language or mode, so tests in other languages or modes are mixed in.
-- Analysis uses the newest 50 tests per source.
-- Starting a practice run abandons a test in progress and reloads the Monkeytype page.
-- The first practice run needs internet to download the word lists; after that they are cached.
-- Windows only: the build config targets a Windows x64 NSIS installer, and nothing here has been tried on macOS or Linux.
-- The installer is unsigned.
-- Capture depends on Monkeytype's markup and default settings. A different layout, input method (IME), or settings that change how letters render may reduce accuracy.
-- A test recognised as practice must match a stored practice list exactly; editing the custom text yourself makes it count as a standard test.
+- Layout emulation inside Monkeytype (its `layout` setting) changes which character a key produces, so tests typed with it are kept in their own profile and their per-key data may be off.
+- Quote mode has no corpus frequencies: its diagnosis weights use observed frequencies.
+- Practice rounds and the retest abandon a test in progress, and a practice round reloads the Monkeytype page.
+- The retest can only set standard lengths (time 15/30/60/120, words 10/25/50/100, quote groups) and needs Monkeytype on the profile's language; otherwise it says what to switch.
+- The first practice round needs internet to download the word lists; after that they are cached.
+- Windows only, unsigned installer.
 
 ## Project layout
 
 ```
 src/
-  main/       Electron main process: windows, IPC, SQLite (db.ts), word-list download (wordlists.ts)
-  preload/    monkeytype.ts (capture + inject entry), recorder.ts, inject.ts, selectors.ts, coach.ts (bridge)
-  shared/     analysis.ts, generator.ts, types.ts: pure logic, no Electron
-  coach/      The Coach window UI: index.html, coach.ts, trend.ts, coach.css
+  main/       Electron main: window and Coach view, IPC (main.ts), coach service (coach.ts), SQLite (db.ts),
+              ad blocking (adblock.ts), word lists (wordlists.ts), payload validation (validate.ts)
+  preload/    monkeytype.ts (capture, result record, IPC), recorder.ts, ui.ts (button, row, strip, key tips, ad CSS),
+              inject.ts (custom text, test profiles), selectors.ts, coach.ts (panel bridge)
+  shared/     pure logic: types, tuning, keystats, diagnose, corpus, profile, progress, planner, generator,
+              practice-model, layout, util
+  coach/      the Coach panel: index.html, coach.ts, trend.ts, coach.css
 test/
-  unit/       vitest specs for analysis, generator, recorder, db, practice
-  e2e/        Playwright specs (launch, capture, coach, practice, trend, packaged) and helpers.ts
-  fixtures/   Shared test data builders
+  unit/       vitest specs
+  e2e/        Playwright specs and helpers.ts (fixtures, composite screenshots)
+  fixtures/   test data builders
 docs/
   monkeytype-dom.md   Monkeytype markup reference
-  screenshots/        Images used in this README
-scripts/test-packaged.mjs
-build.mjs             esbuild bundling
+  screenshots/        images used in this README
 ```
 
 ## License and credits
 
 No license has been chosen yet.
 
-Weakword Coach is unaffiliated with Monkeytype and keybr. keybr's approach inspired the idea; no keybr code is used.
+Weakword Coach is unaffiliated with Monkeytype and keybr. The approach draws on keybr and Typing.com's adaptive practice, Amphetype, Dhakal et al. (CHI 2018) on inter-key timing, Crump & Logan (2010) on word-specific practice gains, and Baddeley & Longman (1978) on distributed practice. Monkeytype's word lists are GPL-3.0 and are downloaded at runtime, not bundled.

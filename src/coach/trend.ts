@@ -1,12 +1,13 @@
-// Progress chart: Monkeytype's wpm and the speed on the weak keys, per test, as one hand-written SVG.
+// Progress chart: Monkeytype's wpm and the speed on the current targets, per test, as one hand-written SVG.
+// Filled points are ordinary tests; hollow points are practice rounds.
 import type { TrendPoint } from '../shared/types';
 import { $, el } from './dom';
 
 const NS = 'http://www.w3.org/2000/svg';
-const W = 356;
-const H = 156;
+const W = 432;
+const H = 168;
 const PAD = { l: 30, r: 10, t: 18, b: 24 };
-/** Above this many tests only practice tests (and the active one) keep a marker. */
+/** Above this many tests only practice rounds (and the active test) keep a marker. */
 const MARKER_LIMIT = 30;
 
 type Attrs = Record<string, string | number>;
@@ -19,11 +20,11 @@ function svg(tag: string, attrs: Attrs = {}, text?: string): SVGElement {
 
 const SERIES = [
   { id: 'overall', value: (p: TrendPoint) => p.wpm },
-  { id: 'weak', value: (p: TrendPoint) => p.weakSpotWpm },
+  { id: 'weak', value: (p: TrendPoint) => p.targetWpm },
 ] as const;
 const round = (v: number | null) => (v === null ? 'no data' : String(Math.round(v)));
 
-export function renderTrend(points: TrendPoint[], focusKeys: string[], targetWpm: number): void {
+export function renderTrend(points: TrendPoint[], targets: string[], baselineWpm: number | null): void {
   const plot = $('trend-plot');
   const box = plot.parentElement!;
   const tip = $('trend-tip');
@@ -31,12 +32,12 @@ export function renderTrend(points: TrendPoint[], focusKeys: string[], targetWpm
   $('trend-empty').hidden = enough;
   box.hidden = !enough;
   $('trend-legend').hidden = !enough;
-  $('trend-weak').textContent = focusKeys.length > 0 ? `Weak keys ${focusKeys.join(' ')}` : 'Weak keys';
+  $('trend-weak').textContent = targets.length > 0 ? `Speed on ${targets.join(' ')}` : 'Speed on targets';
   tip.hidden = true;
   if (!enough) return plot.replaceChildren();
 
-  const values = points.flatMap((p) => [p.wpm, p.weakSpotWpm]).filter((v): v is number => v !== null);
-  const top = Math.ceil(Math.max(targetWpm, ...values) / 20) * 20;
+  const values = points.flatMap((p) => [p.wpm, p.targetWpm]).filter((v): v is number => v !== null);
+  const top = Math.ceil(Math.max(baselineWpm ?? 0, ...values, 20) / 20) * 20;
   const x = (i: number) => PAD.l + (i / (points.length - 1)) * (W - PAD.l - PAD.r);
   const y = (v: number) => H - PAD.b - (v / top) * (H - PAD.t - PAD.b);
 
@@ -47,8 +48,10 @@ export function renderTrend(points: TrendPoint[], focusKeys: string[], targetWpm
   }
   chart.append(svg('text', { class: 'tick', x: PAD.l, y: H - 6, 'text-anchor': 'start' }, `Test ${points[0].testId}`));
   chart.append(svg('text', { class: 'tick', x: W - PAD.r, y: H - 6, 'text-anchor': 'end' }, `Test ${points[points.length - 1].testId}`));
-  chart.append(svg('line', { class: 'target', x1: PAD.l, x2: W - PAD.r, y1: y(targetWpm), y2: y(targetWpm) }));
-  chart.append(svg('text', { class: 'target-label', x: PAD.l + 2, y: y(targetWpm) - 5, 'text-anchor': 'start' }, `Target ${Math.round(targetWpm)}`));
+  if (baselineWpm !== null) {
+    chart.append(svg('line', { class: 'target-line', x1: PAD.l, x2: W - PAD.r, y1: y(baselineWpm), y2: y(baselineWpm) }));
+    chart.append(svg('text', { class: 'target-label', x: PAD.l + 2, y: y(baselineWpm) - 5, 'text-anchor': 'start' }, `Your median ${Math.round(baselineWpm)}`));
+  }
   const cross = svg('line', { class: 'cross', y1: PAD.t - 4, y2: H - PAD.b });
   chart.append(cross);
 
@@ -67,12 +70,12 @@ export function renderTrend(points: TrendPoint[], focusKeys: string[], targetWpm
     points.map((p, i) => {
       const v = s.value(p);
       if (v === null) return null;
-      const practice = p.source === 'practice';
+      const practice = p.kind === 'drill';
       const dim = !practice && points.length > MARKER_LIMIT;
       const m = svg('circle', {
         class: `pt ${s.id}${practice ? ' practice' : ''}${dim ? ' dim' : ''}`,
         cx: x(i), cy: y(v), r: 4,
-        'data-series': s.id, 'data-test-id': p.testId, 'data-source': p.source, 'data-wpm': v.toFixed(1),
+        'data-series': s.id, 'data-test-id': p.testId, 'data-kind': p.kind, 'data-wpm': v.toFixed(1),
       });
       chart.append(m);
       return m;
@@ -91,20 +94,19 @@ export function renderTrend(points: TrendPoint[], focusKeys: string[], targetWpm
     markers.forEach((m) => m.forEach((c, j) => c?.classList.toggle('active', j === active)));
     const row = (id: string, label: string, v: number | null) => {
       const r = el('div', { class: 'row' });
-      const key = el('i', { class: `key-line ${id}` });
-      r.append(key, el('b', {}, round(v)), ` ${label}`);
+      r.append(el('i', { class: `key-line ${id}` }), el('b', {}, round(v)), ` ${label}`);
       return r;
     };
     tip.replaceChildren(
-      el('strong', {}, `Test ${p.testId}${p.source === 'practice' ? ', practice' : ''}`),
-      row('overall', 'wpm overall', p.wpm),
-      row('weak', `wpm on ${focusKeys.length > 0 ? focusKeys.join(' ') : 'weak keys'}`, p.weakSpotWpm),
+      el('strong', {}, `Test ${p.testId}, ${p.kind === 'drill' ? 'practice round' : 'ordinary test'}`),
+      row('overall', 'wpm', p.wpm),
+      row('weak', `wpm on ${targets.length > 0 ? targets.join(' ') : 'targets'}`, p.targetWpm),
     );
     tip.hidden = false;
     const px = (x(active) * box.clientWidth) / W;
     const left = px < box.clientWidth / 2 ? px + 12 : px - 12 - tip.offsetWidth;
     tip.style.left = `${Math.max(left, 0)}px`;
-    plot.setAttribute('aria-label', `Test ${p.testId}: ${round(p.wpm)} wpm overall, ${round(p.weakSpotWpm)} wpm on weak keys`);
+    plot.setAttribute('aria-label', `Test ${p.testId}, ${p.kind === 'drill' ? 'practice round' : 'ordinary test'}: ${round(p.wpm)} wpm, ${round(p.targetWpm)} wpm on targets`);
   };
   const hide = () => {
     active = -1;
@@ -126,5 +128,5 @@ export function renderTrend(points: TrendPoint[], focusKeys: string[], targetWpm
     e.preventDefault();
     show(next);
   };
-  plot.setAttribute('aria-label', 'Progress chart: wpm per test');
+  plot.setAttribute('aria-label', 'Progress chart: wpm per test, ordinary tests and practice rounds');
 }
