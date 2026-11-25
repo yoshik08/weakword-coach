@@ -1,6 +1,6 @@
 # Weakword Coach
 
-Weakword Coach is a Windows Electron app that wraps the real [monkeytype.com](https://monkeytype.com). Standard tests behave exactly as on the site and sync to your account as usual. On top of that it adds a coach. The coach learns what slows you down from your ordinary tests, trains it in short practice sessions that run in Monkeytype itself, and shows on every ordinary result whether your actual wpm has moved since coaching began.
+Weakword Coach is a Windows Electron app that wraps the real [monkeytype.com](https://monkeytype.com). All credit for the typing test itself goes to Monkeytype's creator, **Miodec**, and its [open-source contributors](https://github.com/monkeytypegame/monkeytype/graphs/contributors); this is an independent add-on, not affiliated with them. Standard tests behave exactly as on the site and sync to your account as usual. On top of that it adds a coach. The coach learns what slows you down from your ordinary tests, trains it in short practice sessions that run in Monkeytype itself, and shows on every ordinary result whether your actual wpm has moved since coaching began.
 
 Everything lives in one window. The Coach opens from a button next to Monkeytype's notification bell, and its progress row sits right under the result's wpm and accuracy. Ads are removed.
 
@@ -171,6 +171,10 @@ docs/
 
 ## License and credits
 
-No license has been chosen yet.
+Weakword Coach is released under the [MIT License](LICENSE).
 
-Weakword Coach is unaffiliated with Monkeytype and keybr. The approach draws on keybr and Typing.com's adaptive practice, Amphetype, Dhakal et al. (CHI 2018) on inter-key timing, Crump & Logan (2010) on word-specific practice gains, and Baddeley & Longman (1978) on distributed practice. Monkeytype's word lists are GPL-3.0 and are downloaded at runtime, not bundled.
+**Monkeytype.** Everything you type into is [Monkeytype](https://monkeytype.com), created by **Miodec** and built by its community of contributors ([monkeytypegame/monkeytype](https://github.com/monkeytypegame/monkeytype), GPL-3.0). This project contains none of Monkeytype's source code. Its word lists, also GPL-3.0, are downloaded at runtime from monkeytype.com and kept in your own profile, never bundled or redistributed here. Weakword Coach is unaffiliated with, and not endorsed by, Monkeytype. If you enjoy it, support Monkeytype itself.
+
+**Ideas.** The approach draws on keybr and Typing.com's adaptive practice, Amphetype, Dhakal et al. (CHI 2018) on inter-key timing, Crump & Logan (2010) on word-specific practice gains, and Baddeley & Longman (1978) on distributed practice. Weakword Coach is also unaffiliated with keybr.
+
+Full details are in [NOTICE.md](NOTICE.md). The Coach panel's footer carries the same Monkeytype credit.

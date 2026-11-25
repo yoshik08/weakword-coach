@@ -1,4 +1,5 @@
-// Monkeytype's word lists. They are GPL-3.0 data, so they are downloaded on first use into the
+// Monkeytype's word lists (c) Miodec and the Monkeytype contributors, github.com/monkeytypegame/monkeytype.
+// They are GPL-3.0 data, so they are downloaded on first use into the
 // user's profile instead of being bundled with the app, then read from that cache (offline).
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';

@@ -103,6 +103,22 @@ function createCoachView(win: BrowserWindow): WebContentsView {
     },
   });
   view.setBackgroundColor('#00000000');
+  // The panel's only links are credits; they open in the user's browser, never inside the panel.
+  const openOutside = (url: string) => {
+    try {
+      if (/^https:$/.test(new URL(url).protocol)) void shell.openExternal(url);
+    } catch {}
+  };
+  view.webContents.setWindowOpenHandler(({ url }) => {
+    openOutside(url);
+    return { action: 'deny' };
+  });
+  view.webContents.on('will-navigate', (e, url) => {
+    if (!url.startsWith('file:')) {
+      e.preventDefault();
+      openOutside(url);
+    }
+  });
   win.contentView.addChildView(view);
   const fit = () => {
     const { width, height } = win.getContentBounds();
